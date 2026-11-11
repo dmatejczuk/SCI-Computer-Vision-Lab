@@ -7,7 +7,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. Localhost is a secure-context exception for camera development. An HTTP LAN IP is not a production camera solution. Camera permission is requested only after **Rozpocznij**.
+Open `http://localhost:5173`. Localhost is a secure-context exception for camera development. An HTTP LAN IP is not a production camera solution. Camera permission is requested only after selecting **Kamera komputera** in the setup hub. Check the preview, then select **Przejdź do AI Challenge**.
 
 ```sh
 npm run typecheck
@@ -81,3 +81,14 @@ This is a binary image classifier, not a hand detector. A missing hand, clothing
 `npm run download:model` is an explicit maintenance command requiring Internet. It replaces assets/checksums from the recorded TensorFlow URL; review changed checksums before distributing a release. It is never executed on application startup or during the workshop. The build uses the existing local model.
 
 Internet is required once to obtain npm packages and Docker base images and build the deployment image. Thereafter local HTTP and private-CA LAN deployments can operate without WAN access; public ACME certificate renewal still requires Internet. This means **LAN available, Internet disconnected**; clients still need access to the local server. There is intentionally no service worker hiding old builds.
+
+## Phone development
+
+Run `npm run dev:signaling` in a second terminal alongside `npm run dev`. Vite proxies `/api` and
+`/ws` to port 3001. The backend defaults to Origin `http://localhost:5173`; set `APP_ORIGIN` if
+using another origin. Actual phones need trusted LAN HTTPS; see [PHONE_CAMERA.md](PHONE_CAMERA.md).
+`npm run build` also compiles the backend into `dist-server`. Playwright starts both dev services.
+The phone E2E test uses real WebRTC with synthetic video and separate contexts; its QR origin is
+a documentation-only address and the test follows its fragment on localhost. It does not validate
+phone CA trust or physical LAN transport. Production tests use `E2E_BASE_URL` and require normal
+certificate trust; no browser security exceptions are added.

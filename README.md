@@ -11,6 +11,7 @@ better examples, retrain, and compare the results.
 
 ## Features
 
+- **Phone camera** – pair a phone over HTTPS/WebRTC; the computer still runs all ML and gameplay.
 - **Guided workshop** – collect OPEN/FIST examples, train a classifier, and test predictions live.
 - **Gesture-controlled game** – an open hand arms the next jump; closing the fist triggers it.
 - **Interactive AI laboratory** – freeze a frame and inspect its pixels, extracted features, and actual model outputs.
@@ -28,8 +29,8 @@ v2, and a free TCP port 80. From the repository directory:
 docker compose up -d --build
 ```
 
-Open [http://localhost](http://localhost) on the Docker host, select **Rozpocznij**, and allow camera
-access. No hosts-file edits, certificates, TLS warnings, `.env` file or environment variables are
+Open [http://localhost](http://localhost) on the Docker host, choose **Uruchom AI Challenge**, then **Kamera komputera**, and allow camera
+access. Check the preview, then select **Przejdź do AI Challenge**. No hosts-file edits, certificates, TLS warnings, `.env` file or environment variables are
 needed. Browsers treat HTTP localhost as a secure context, so webcam access is available with
 user permission. The port is bound to loopback; this default mode is for the host computer only.
 
@@ -49,6 +50,13 @@ For other computers, use the separate HTTPS variant with `APP_HOST`. See the
 [deployment guide](docs/DEPLOYMENT.md) for LAN/private CA, public domains, ports and troubleshooting.
 An ordinary LAN IP over HTTP does not enable camera access.
 
+## Phone camera on the LAN
+
+On Windows, run `.\scripts\start-lan.ps1`, trust the exported public CA on both devices, and open
+the printed HTTPS URL on the computer. Select **Telefon**, scan the QR, approve the matching code,
+and start the phone camera. See the [phone camera guide](docs/PHONE_CAMERA.md) for Android/iOS
+trust, public-domain deployment, optional TURN and troubleshooting.
+
 ## Run locally without Docker
 
 For development or a quick local preview, install Node.js 24 and npm:
@@ -63,8 +71,9 @@ for build commands and testing instructions.
 
 ## Privacy and offline operation
 
-Camera processing, training, and inference run in the browser. The application does not upload
-images, training examples, or results to a server. Session data stays in the current tab's memory;
+Camera processing, training, and inference run on the computer. A paired phone sends encrypted
+video to that computer over WebRTC, optionally through TURN. The application/signaling server
+does not receive or store video frames, training examples or results. Session data stays in the current tab's memory;
 closing the tab or using the new-group reset clears it.
 
 The pretrained model and application assets are bundled locally. Once the deployment is prepared,

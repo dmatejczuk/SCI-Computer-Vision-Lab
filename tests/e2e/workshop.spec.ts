@@ -19,7 +19,7 @@ async function reset(page: Page) {
   await page.getByRole('button', { name: 'Nowa grupa', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: 'Rozpocząć pracę z nową grupą?' });
   await confirmation.getByRole('button', { name: 'Nowa grupa', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Rozpocznij', exact: false })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Kamera komputera', exact: true })).toBeEnabled();
 }
 test('complete real ML workshop works with local assets and repeated group resets', async ({
   page,
@@ -40,14 +40,16 @@ test('complete real ML workshop works with local assets and repeated group reset
     }
     return route.continue();
   });
-  await page.goto('/');
+  await page.goto('/?role=station');
+  await expect(page.getByRole('heading', { name: 'Wybierz swoją kamerę' })).toBeVisible();
   await page.screenshot({ path: 'test-results/start-desktop.png', fullPage: true });
   expect(
     await page.locator('video').evaluate((video) => (video as HTMLVideoElement).srcObject),
   ).toBeNull();
   const memory: number[] = [];
   for (let round = 0; round < 2; round++) {
-    await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+    await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+    await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
     await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
       timeout: 60000,
     });
@@ -92,8 +94,11 @@ test('five concurrent tabs maintain independent data', async ({ browser }) => {
     const pages = await Promise.all(contexts.map((context) => context.newPage()));
     await Promise.all(
       pages.map(async (page) => {
-        await page.goto('/');
-        await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+        await page.goto('/?role=station');
+        await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+        await page
+          .getByRole('button', { name: 'Przejdź do AI Challenge' })
+          .click({ timeout: 60000 });
         await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
           timeout: 90000,
         });
@@ -128,8 +133,9 @@ test('CPU fallback trains and predicts when WebGL is unavailable', async ({ page
       });
     }
   });
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
   await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
     timeout: 60000,
   });
@@ -152,15 +158,16 @@ test('camera denial is recoverable and reset remains accessible', async ({ page 
       throw new DOMException('Denied for test', 'NotAllowedError');
     };
   });
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Dostęp do kamery jest zablokowany');
   await reset(page);
-  await expect(page.getByRole('heading', { name: 'Sterowanie gestami' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Wybierz swoją kamerę' })).toBeVisible();
 });
 test('camera loss can be recovered without losing captured data', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
   await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
     timeout: 60000,
   });
@@ -181,7 +188,8 @@ test('camera loss can be recovered without losing captured data', async ({ page 
   await reset(page);
 });
 test('instructor can run and replay the real game without a camera or model', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?role=station');
+  await expect(page.getByRole('button', { name: 'Kamera komputera', exact: true })).toBeVisible();
   await page.keyboard.press('Control+Shift+D');
   await page.getByRole('button', { name: 'Test gry bez kamery' }).click();
   await expect(page.locator('canvas')).toBeVisible();
@@ -198,9 +206,9 @@ test('reset cancels a pending camera permission immediately', async ({ page }) =
   await page.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = () => new Promise(() => {});
   });
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
-  await expect(page.getByRole('heading', { name: 'Przygotowujemy stanowisko…' })).toBeVisible();
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  await expect(page.getByText('Zezwól przeglądarce na dostęp do kamery.')).toBeVisible();
   await reset(page);
 });
 test('Phaser responds to gesture transitions and SPACE without repeating held inputs', async ({
@@ -210,7 +218,7 @@ test('Phaser responds to gesture transitions and SPACE without repeating held in
     !!process.env.E2E_BASE_URL,
     'This isolated scene harness uses Vite source modules; production game flow is tested separately.',
   );
-  await page.goto('/');
+  await page.goto('/?role=station');
   const result = await page.evaluate(async () => {
     const scenePath = '/src/features/game/RunnerScene.ts',
       controllerPath = '/src/features/game/GameController.ts',
@@ -303,8 +311,9 @@ test('frozen frame laboratory inspects real data, compares and returns to game',
   page.setDefaultTimeout(15000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
   await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
     timeout: 60000,
   });
@@ -480,7 +489,7 @@ test('snapshot pipeline matches the real classifier and repeated captures releas
 }) => {
   test.skip(!!process.env.E2E_BASE_URL, 'Source-module integration harness runs against Vite.');
   test.setTimeout(180000);
-  await page.goto('/');
+  await page.goto('/?role=station');
   const result = await page.evaluate(async () => {
     const path = '/src/services/SessionManager.ts';
     const { SessionManager } = await import(path);
@@ -638,8 +647,9 @@ test('challenge asks for a human label and retrains with the frozen example', as
   test.setTimeout(180000);
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
   await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
     timeout: 60000,
   });
@@ -699,7 +709,7 @@ test('official branding uses a text header and local favicon without changing wo
     external.push(route.request().url());
     return route.fulfill({ body: 'Author link destination' });
   });
-  await page.goto('/');
+  await page.goto('/?role=station');
   const logo = page.getByRole('link', { name: 'Otwórz stronę SCI', exact: true });
   const author = page.getByRole('link', { name: 'DM – strona autora', exact: true });
   await expect(logo).toHaveText('SCI_');
@@ -732,7 +742,8 @@ test('official branding uses a text header and local favicon without changing wo
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/branding-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.getByRole('button', { name: 'Rozpocznij', exact: false }).click();
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
   await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
     timeout: 60000,
   });

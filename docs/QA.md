@@ -94,3 +94,10 @@ Ask: Which data did your model see? What changed for the second person? Did more
   image and original result remain unchanged and the game does not jump.
 - In the challenge, change background/pose, freeze, select the correct human label, add/retrain
   and retest. Confirm sample count increases only for that label; at the cap adding is disabled.
+
+## Phone camera acceptance
+
+Run the automated signaling, freshness and real-WebRTC tests, then complete the physical Android,
+iPhone, interruption, relay and 30-pair checklist in [PHONE_CAMERA.md](PHONE_CAMERA.md). Record actual
+transport, decoded FPS, RTT and hardware; do not substitute prediction FPS for video FPS or report
+local network routing merely because the candidate pair is P2P.

@@ -1,3 +1,125 @@
+# Workshop view with a paired phone - 2026-11-11
+
+After pairing, the workshop view no longer shows the phone pairing banner or the
+**Kamera komputera** / **Telefon** source switch. Re-pairing remains available through the error
+retry and the instructor panel; the camera setup screen is unchanged. Playwright scenarios were
+updated accordingly. TypeScript, ESLint and Prettier passed; the Docker network deployment was rebuilt.
+Playwright was not re-run.
+
+# Phone connection resilience - 2026-11-11
+
+Fixed review findings in the phone pairing path. The desktop now releases the previous peer
+connection and stats timer on `reconnecting`/re-approval, so an orphaned peer can no longer exhaust
+the restart budget and end a resumed session. `disconnected` gets a 4-second grace period before an
+ICE restart, and the per-peer recovery budget resets after each successful connection. The server
+limits restarts to two per 60 seconds instead of two per room, drops late answers/ICE candidates
+from superseded negotiations instead of ending the room, and lets a valid resume token replace a
+socket that still looks open after a network change. Capture failures now report a dedicated
+`capture` error; `start()`/`train()` no longer change the stage while another operation runs.
+The coturn example refuses loopback, `0.0.0.0/8` and link-local peers. `start-lan.ps1` prefers
+adapters with a default route (skipping host-only adapters such as VirtualBox) and documentation
+uses `<SERVER_IP>` placeholders instead of concrete addresses.
+
+- TypeScript and ESLint passed. New/updated signaling tests (restart window, stale negotiation,
+  half-open resume takeover) and a peer recovery test (disconnect grace, per-incident budget)
+  passed under Node's test runner before the Docker build.
+- Docker network images rebuilt via scripts/start-lan.ps1; `npm run check` inside the build passed
+  (TypeScript, ESLint, all unit tests, model integrity, production builds). Both services reached
+  healthy; HTTPS `/phone`=200 and `/api/health`=200 with the exported private CA.
+
+Not verified: Playwright browser scenarios and physical phone reconnects after these changes.
+
+# Roles, manual pairing and recovery - 2026-11-11
+
+Implemented role selection, editable user-agent name suggestions, six-character manual invitations,
+large QR/code display, six input boxes with paste support, instructor-only transport diagnostics
+and dismissible snackbars. Approved peers have a bounded authenticated reconnect window;
+new-device pairing revokes the old room. Fresh frames restore capture/prediction, while games
+remain paused until explicitly resumed.
+
+- Full npm run check and Docker image build passed: TypeScript, ESLint, model integrity, production
+  frontend/backend compilation and 53 unit/integration tests, including manual-code limits, approval,
+  invitation replay, authenticated resume, grace expiry, replacement and suggested device names.
+- The full browser run passed 16/17 scenarios; CPU fallback was interrupted by development hot
+  reload and passed its focused rerun. Hub, full phone workshop and stale-frame scenarios passed
+  again after the recovery changes.
+- Both final recovery scenarios passed (30.1 seconds): typed code/approval, real WebSocket close
+  and reconnect, video track replacement, camera-only suspension/foreground recovery, prediction
+  restart, game pause preservation, and revocation when connecting a new device.
+- Trusted Docker HTTPS/WSS verification passed manual-code approval and authenticated resume.
+- Desktop QR setup fits at 1366x768 without scrolling. Role selection and six-box phone entry
+  were visually inspected at 390x844; technical camera stats are absent from ordinary pairing UI.
+
+Camera suspension and visibility events were simulated with real Chromium media/WebRTC. Physical
+Android/iPhone screen-lock behavior, OS eviction, school Wi-Fi and WAN recovery still require
+hardware checks. Browser background execution is not guaranteed. A discarded page or expired
+60-second server grace period requires pairing again.
+
+# Camera setup hub - 2026-11-11
+
+The entry screen now pairs a left-hand live preview with camera selection on the right.
+Selecting a source replaces the choices with connection controls. Phone approval replaces
+the QR; changing the source returns to selection. Challenge entry requires a ready camera
+and model and preserves the video track.
+
+The full 15-scenario browser suite passed before the final compact-panel refinement.
+After that refinement, all four focused hub/phone scenarios passed (29.9 seconds), including
+a 1366x768 no-scroll assertion for the QR panel, returning to selection, preservation of the
+video track, the complete phone workshop and connection recovery. Desktop and mobile hub
+screenshots were inspected.
+
+# Phone UI refinement - 2026-11-11
+
+Phone pairing now presents three steps, hides the confirmation code after approval and keeps
+the live preview and camera controls prominent. Desktop connection metrics are collapsed by
+default. Help and privacy details remain available on demand.
+
+TypeScript and ESLint passed. Both phone Playwright scenarios passed (30.5 seconds), covering
+parsing the invitation, approval, capture, training, laboratory, gameplay, freeze recovery and
+reset. The live phone layout at 390x844 and desktop gameplay at 1366x768 were visually inspected.
+
+# Phone camera implementation - 2026-11-11
+
+Implemented local/phone video sources, single-use pairing with explicit approval, a separate phone
+entrypoint, native WebRTC, RAM-only signaling, stale-frame gating, bounded ICE recovery, source/reset
+cleanup, transport diagnostics and optional authenticated TURN. The supplied analysis plan remains
+unchanged as historical input; current operation is documented in PHONE_CAMERA.md.
+
+Verified on Windows with Chromium synthetic cameras and real ML, Phaser, WebRTC and signaling:
+
+- Full npm run check passed: TypeScript, ESLint, 48 unit/integration tests, model integrity,
+  frontend production build and compiled Node backend.
+- All 14 Playwright scenarios passed in 3.6 minutes, including local-camera regression, the full
+  phone workshop and media freeze/re-pair/group-reset behavior.
+- Real WebSocket tests isolated 30 rooms / 60 connections and verified cleanup. Unit/integration
+  checks cover approval races, invitation replay, roles, TTL, stale negotiation generations,
+  Origin rejection, schema/size validation, TURN credential expiry and pending-source cancellation.
+- Forced relay passed the complete phone workshop against Docker coturn (27.4 seconds), with
+  temporary backend-issued credentials, iceTransportPolicy=relay and a selected TURN pair.
+  This proves the tested single-host path, not 30 physical Wi-Fi pairs or every NAT topology.
+- Docker application and signaling images built successfully. Both network services reached healthy;
+  signaling port 3001 remained internal. Local HTTP mode was also exercised.
+- Trusted HTTPS and WSS approval passed at the host LAN IP. The verification script checked the
+  certificate chain and IP, /phone=200, /api/health=200, missing API=404 and missing asset=404.
+  No browser TLS bypass, OS certificate installation or firewall changes were performed.
+- The Windows helper scripts/start-lan.ps1 -Address <SERVER_IP> completed end-to-end, exported
+  the public CA certificate and left both services healthy. HTTPS/WSS checks passed using that export.
+- The production /phone entry loaded four asset bundles and no TensorFlow, Phaser or workshop
+  bundle; HTTP localhost reported a secure context.
+- The network CSP includes its explicit same-origin wss URL; camera-only Permissions-Policy remains.
+  Caddy default_sni is configured for IP clients that omit SNI behind Docker NAT.
+- Phone UI (390x844) and desktop gameplay screenshots were visually inspected. A separate repeated
+  phone workshop test passed after adding the screenshot checks (26.4 seconds).
+- npm audit --omit=dev reported no production dependency advisories during implementation.
+
+Not verified: physical Android/iPhone behavior, phone OS trust installation, actual camera quality,
+Wi-Fi interruption/screen-lock timing on hardware, 30 real pairs over 45 minutes, WAN routing,
+public ACME issuance or end-to-end video latency. Follow the physical checklist in PHONE_CAMERA.md.
+The existing Caddy volume had an expired intermediate after being offline; Caddy renewed it, and
+recreating the container with the current configuration produced a valid chain. The root was retained.
+
+Earlier reports below describe previous versions, not additional tests of this feature.
+
 # Deployment configuration update – 2026-10-06
 
 Default startup now serves HTTP localhost on loopback TCP 80, without environment variables,

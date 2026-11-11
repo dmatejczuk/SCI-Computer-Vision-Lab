@@ -153,6 +153,8 @@ describe('Frozen-frame explanation', () => {
       gesturePreview: session.gestures.preview(0.9, 0.1),
     };
     const capture = vi.spyOn(session.snapshotCapture, 'capture').mockResolvedValue(snapshot);
+    session.camera.stream = { getTracks: () => [] } as unknown as MediaStream;
+    session.frames.mark(1);
     const update = vi.spyOn(session.gestures, 'update');
     const jump = vi.spyOn(session.game, 'jump');
     await session.freezeExplanation();

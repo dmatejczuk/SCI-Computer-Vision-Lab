@@ -12,7 +12,7 @@ export const pl = {
   workshop: 'LABORATORIUM WIZJI KOMPUTEROWEJ',
   steps: ['Dane', 'Trening', 'Test', 'Gra'],
   local: 'Przetwarzanie tylko na tym komputerze',
-  privacy: 'Obraz z kamery nie opuszcza tej karty. Nie zapisujemy zdjęć.',
+  privacy: 'Obraz analizuje komputer. Bez zapisu zdjęć. Telefon przesyła obraz przez WebRTC.',
   startTitle: 'Sterowanie gestami',
   subtitle: 'Wytrenuj model rozpoznający dwa gesty i przetestuj go w grze.',
   intro: 'Najpierw zbierzemy przykłady otwartej dłoni i pięści.',
@@ -101,6 +101,8 @@ export const pl = {
       'Nie udało się wytrenować modelu. Twoje przykłady zostały zachowane. Spróbuj ponownie.',
     prediction:
       'Rozpoznawanie zostało przerwane. Spróbuj ponownie. Jeśli problem wróci, poproś prowadzącego o pomoc.',
+    capture:
+      'Zbieranie przykładów zostało przerwane. Zebrane przykłady zostały zachowane. Spróbuj ponownie.',
     data: 'Zbierz przynajmniej 20 przykładów każdego gestu.',
     unexpected: 'Wystąpił problem z aplikacją. Poproś prowadzącego o ponowne uruchomienie strony.',
   },

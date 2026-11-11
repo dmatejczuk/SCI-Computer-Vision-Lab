@@ -30,7 +30,7 @@ TLS exception is required. The default Caddy configuration serves HTTP explicitl
 redirect to a hostname or HTTPS. Compose publishes port 80 only on `127.0.0.1`.
 
 Modern browsers consider HTTP localhost a potentially trustworthy origin, allowing camera access
-with permission. Click **Rozpocznij** and grant camera access. OS privacy settings and browser or
+with permission. Choose **Uruchom AI Challenge**, then **Kamera komputera** and grant camera access. OS privacy settings and browser or
 enterprise policies still apply. A remote Docker context means localhost is not the deployment
 host; use the network mode instead.
 
@@ -52,15 +52,15 @@ APP_HOST=vision.example.test
 APP_TLS_ISSUER=internal
 ```
 
-`vision.example.test` and `192.168.10.20` below are examples; replace them with your chosen
-hostname and actual server IP. `APP_HOST` must contain only one hostname, without scheme,
+`vision.example.test` and `<SERVER_IP>` below are placeholders; replace them with your chosen
+hostname and the server's actual LAN IP. `APP_HOST` must contain one hostname or a LAN IP for the internal issuer, without scheme,
 path or port. Environment variables in your shell override `.env` values.
 
 Configure your LAN DNS to resolve that hostname to the server. Alternatively, add a hosts entry
 on **each client** (administrator privileges required), for example:
 
 ```text
-192.168.10.20 vision.example.test
+<SERVER_IP> vision.example.test
 ```
 
 Windows hosts file: `C:\Windows\System32\drivers\etc\hosts`; Linux/macOS: `/etc/hosts`.
@@ -108,15 +108,15 @@ curl -I https://vision.example.test/
 Alternatively, use `curl --cacert caddy-root.crt https://vision.example.test/` with a curl TLS
 backend that supports that CA file. Open the same URL in the client's browser. Confirm no
 certificate warning, `window.isSecureContext === true` in DevTools, and successful camera access
-following **Rozpocznij**. Run a capture/train/test/game loop on each workstation.
-A plain `http://192.168.10.20` address is not a secure camera context. `localhost` on a client
+following **Kamera komputera**. Run a capture/train/test/game loop on each workstation.
+A plain `http://<SERVER_IP>` address is not a secure camera context. `localhost` on a client
 refers to that client, not the LAN server.
 
 For a separate Node TLS verification without modifying the OS trust store (PowerShell):
 
 ```powershell
 $env:APP_HOST = 'vision.example.test'
-$env:SERVER_IP = '192.168.10.20'
+$env:SERVER_IP = '<SERVER_IP>'
 $env:CA_FILE = "$PWD\caddy-root.crt"
 node scripts/verify-https.mjs
 ```
@@ -164,7 +164,7 @@ docker compose logs --tail=100 app
 docker compose exec app wget -q -O - http://127.0.0.1:8080/health
 ```
 
-The image checks this internal endpoint every 30 seconds (5-second timeout). It is bound to
+The app image checks this internal endpoint every 30 seconds (5-second timeout). It is bound to
 container loopback and never published. `healthy` confirms Caddy responds internally, not client
 DNS, certificate trust, camera hardware or model accuracy. Also check the public-facing URL:
 
@@ -198,18 +198,33 @@ Copy the resulting container ID into `docker inspect --format '{{json .State.Hea
 
 ## Offline preparation
 
-Build while Internet is available, then export:
+Build both images while Internet is available:
 
 ```sh
 docker compose build
-docker save ai-vision-challenge:1.0.0 -o ai-vision-challenge.tar
+docker save ai-vision-challenge:1.0.0 aivision-signaling:latest -o ai-vision-challenge.tar
 ```
 
-Transfer the archive and selected Compose file to the server; transfer `.env` only for network
-mode. Caddy configurations are included in the image. After `docker load -i ai-vision-challenge.tar`,
-run `docker compose up -d --no-build --pull never` for local mode, or
-`docker compose -f docker-compose.network.yml up -d --no-build --pull never` for LAN mode.
-For a new LAN server, distribute that server's CA. Assets and the model are bundled; clients
-still require access to the server. Public certificate renewal is not an offline operation.
+The signaling image name follows the Compose project name; use `docker compose images` to verify
+it if the directory/project name differs. Transfer the archive and selected Compose file, plus
+`.env` for network mode. Caddy configurations and backend code are included in the images.
+Load with `docker load -i ai-vision-challenge.tar`, then start with `--no-build --pull never`.
+Use the network file explicitly for LAN HTTPS. If using TURN, transfer its image and configuration
+as well. Export/trust the target server's public CA. Public certificate renewal needs Internet.
 
 Camera secure-context requirements: [MDN getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
+
+## Phone source, WebSocket signaling and LAN helper
+
+Both Compose variants now start `signaling` internally on port 3001; it has its own healthcheck
+and is not published. Caddy routes same-origin API/WSS and direct `/phone` links. Localhost mode
+remains intended for the computer camera. Phone use requires network HTTPS on both devices.
+Use `.\scripts\start-lan.ps1` on Windows for a reachable LAN IPv4 address and private-CA export.
+IP certificates avoid phone hosts entries. The script never changes system trust or the firewall.
+See [PHONE_CAMERA.md](PHONE_CAMERA.md) for Android/iOS/Windows trust, Wi-Fi isolation, public domains,
+TURN ports and credentials, lifecycle, tests and recovery.
+
+Offline deployment now requires both application and signaling images (and coturn if used).
+Build both with Compose and export both images listed by `docker compose images`; transfer the
+chosen Compose files and load every image before using `--no-build --pull never`. The earlier
+application-only archive is insufficient for phone signaling.

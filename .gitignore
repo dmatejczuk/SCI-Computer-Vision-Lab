@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-server/
+caddy-root.crt
 coverage/
 test-results/
 playwright-report/

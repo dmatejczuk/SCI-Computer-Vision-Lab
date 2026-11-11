@@ -1,5 +1,7 @@
 {
     admin off
+    # IP clients omit SNI; Docker's internal address is not the public LAN address.
+    default_sni {$APP_HOST}
 }
 
 import /etc/caddy/Caddyfile.common

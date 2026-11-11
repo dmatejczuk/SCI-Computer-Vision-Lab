@@ -10,6 +10,7 @@ export function InstructorPanel({
   session: SessionManager;
   onClose: () => void;
 }) {
+  const phone = useSyncExternalStore(session.phone.subscribe, session.phone.getSnapshot);
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const [confirm, setConfirm] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -76,6 +77,32 @@ export function InstructorPanel({
         <dt>{text.backend}</dt>
         <dd>{diagnostics.backend ?? '–'}</dd>
       </dl>
+      <details>
+        <summary>Diagnostyka połączenia telefonu</summary>
+        {phone.stats ? (
+          <dl className="diagnostics">
+            <dt>Transport</dt>
+            <dd>{phone.stats.transport}</dd>
+            <dt>Obraz</dt>
+            <dd>
+              {phone.stats.width} × {phone.stats.height}
+            </dd>
+            <dt>FPS wideo</dt>
+            <dd>{Math.round(phone.stats.fps)}</dd>
+            <dt>Bitrate</dt>
+            <dd>{Math.round(phone.stats.kbps)} kb/s</dd>
+            <dt>RTT sieci</dt>
+            <dd>
+              {phone.stats.rtt === null ? 'Brak danych' : Math.round(phone.stats.rtt) + ' ms'}
+            </dd>
+            <dt>Utracone pakiety</dt>
+            <dd>{phone.stats.lost}</dd>
+          </dl>
+        ) : (
+          <p>Brak aktywnej transmisji.</p>
+        )}
+        <p>RTT nie oznacza opóźnienia obrazu. P2P nie gwarantuje ruchu tylko w sieci lokalnej.</p>
+      </details>
       <SnapshotDiagnostics session={session} />
       {(['fistThreshold', 'openThreshold', 'inferenceHz'] as const).map((key, index) => (
         <label className="setting" key={key}>
@@ -96,7 +123,7 @@ export function InstructorPanel({
       <label className="setting">
         {text.chooseCamera}
         <select
-          disabled={state.busy || !state.cameraLabel}
+          disabled={state.source === 'phone' || state.busy || !state.cameraLabel}
           value={session.camera.stream?.getVideoTracks()[0]?.getSettings().deviceId ?? ''}
           onChange={(event) => void session.restartCamera(event.target.value)}
         >

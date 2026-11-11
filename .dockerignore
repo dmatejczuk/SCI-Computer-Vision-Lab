@@ -1,8 +1,10 @@
 node_modules
 dist
+dist-server
 .git
 .env
 certs
+caddy-root.crt
 test-results
 playwright-report
 *.log

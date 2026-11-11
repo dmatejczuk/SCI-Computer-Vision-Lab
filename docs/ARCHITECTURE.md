@@ -1,6 +1,6 @@
 # Architecture
 
-The LAN server serves immutable application assets only. Each tab owns a SessionManager; no cookies, storage, uploads, telemetry, or server-side session exist. Images live only in the video element and transient preprocessing tensors. DatasetManager retains fixed-length numeric embeddings in RAM, with a per-class cap.
+Caddy serves application assets and proxies the RAM-only signaling service. Each computer tab owns a SessionManager; there are no accounts, cookies, persistent session storage, image uploads or telemetry. Signaling rooms hold only temporary control state. Images live only in the video element and transient preprocessing tensors. DatasetManager retains fixed-length numeric embeddings in RAM, with a per-class cap.
 
 ## Application states
 
@@ -30,6 +30,16 @@ permission on this secure-context exception. The standalone network Compose vari
 static-file handling and the internal loopback health endpoint are imported from
 `Caddyfile.common`. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
-All runtime requests remain same-origin. Internet is needed to prepare dependencies/images,
+Application assets and signaling remain same-origin; WebRTC media uses negotiated peer/relay transports. Internet is needed to prepare dependencies/images,
 not during a local/private-CA workshop; public certificate renewal requires connectivity.
 The model download is explicit and checked-in assets are verified during builds.
+
+## Phone source and signaling
+
+`VideoSource` abstracts local and remote streams; `SessionManager` gates live consumers through
+`FrameMonitor`. Source changes preserve examples/models, while group reset clears them and closes
+all source resources. `/phone` dynamically imports a lightweight sender without ML/game modules.
+The Node WebSocket registry owns expiring one-use invitations, approval and generation-checked
+SDP/ICE routing in RAM. Caddy proxies `/api/*` and `/ws` to the unexposed signaling service and
+rewrites only `/phone` to HTML. Video never enters the signaling service. Optional coturn relays
+encrypted media using temporary credentials. See [PHONE_CAMERA.md](PHONE_CAMERA.md).

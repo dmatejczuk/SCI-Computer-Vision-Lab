@@ -1,0 +1,15 @@
+# Optional standalone coturn server; use the host's reachable IP and a private secret.
+services:
+  turn:
+    image: coturn/coturn:4.6.3
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - 'exec turnserver --no-cli --no-tls --no-dtls --fingerprint --use-auth-secret --static-auth-secret="$$TURN_SECRET" --realm=vision --external-ip="$$TURN_PUBLIC_IP" --listening-port=3478 --min-port=49160 --max-port=49219 --no-multicast-peers --denied-peer-ip=0.0.0.0-0.255.255.255 --denied-peer-ip=127.0.0.0-127.255.255.255 --denied-peer-ip=169.254.0.0-169.254.255.255 --denied-peer-ip=::1 --user-quota=4 --total-quota=120 --log-file=stdout'
+    environment:
+      TURN_SECRET: ${TURN_SECRET:?Set a random TURN_SECRET}
+      TURN_PUBLIC_IP: ${TURN_PUBLIC_IP:?Set TURN_PUBLIC_IP}
+    ports:
+      - '3478:3478/udp'
+      - '3478:3478/tcp'
+      - '49160-49219:49160-49219/udp'

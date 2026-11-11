@@ -30,3 +30,22 @@ Suggested timing: introduction 30s; first person's data/training/test 2min; game
 See [QA.md](QA.md) and [VERIFICATION.md](VERIFICATION.md). Automated tests use a synthetic camera
 with real ML and game code. Recognition quality, lighting and physical camera compatibility must
 be checked with the actual participants and workstations.
+
+## Using phones
+
+Prepare trusted network HTTPS on the computer and every phone before the group arrives; follow
+[PHONE_CAMERA.md](PHONE_CAMERA.md). Select **Telefon**, compare the pairing code before approval,
+and ask the phone user to start the rear camera. Keep the phone awake and the page foregrounded.
+All data collection, training, game and laboratory actions remain on the computer. Stop or reset
+between groups; old invitations cannot be reused. If video freezes, wait for bounded recovery or select **Spróbuj ponownie** to pair again before continuing. The instructor panel's **Uruchom kamerę ponownie** also re-pairs the phone.
+
+## Camera setup hub
+
+Before the challenge, choose the computer camera or pair a phone using the QR code.
+The left panel shows the live preview. Once the camera and model are ready, select
+**Przejdź do AI Challenge** to begin. Switching sources or resetting a group returns
+to setup; the same video element is retained when entering the challenge.
+
+The first screen selects the workstation or camera role. Phones can enter the six-character
+invitation code instead of scanning the QR; every new device still needs desktop approval.
+Camera network diagnostics are available only in instructor mode.

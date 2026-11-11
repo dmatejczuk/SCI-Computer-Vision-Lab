@@ -1,3 +1,4 @@
+import { PairingPanel } from '../features/phone-camera/PairingPanel';
 import { AppHeader } from '../components/layout/AppHeader';
 import { AppFooter } from '../components/layout/AppFooter';
 import { ExplanationView } from '../features/explanation/ExplanationView';
@@ -14,6 +15,20 @@ export function App() {
   const video = useRef<HTMLVideoElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [instructor, setInstructor] = useState(false);
+  const [entered, setEntered] = useState(false);
+  const hub = !entered && state.controlMode !== 'KEYBOARD';
+  const choosing = state.stage === 'START' && !state.busy && !state.error;
+  const phone = useSyncExternalStore(session.phone.subscribe, session.phone.getSnapshot);
+  // A paired phone needs no source controls in the workshop; recovery uses the error retry.
+  const phonePaired = state.source === 'phone' && !!phone.stats;
+  useEffect(() => {
+    if (state.stage === 'START') setEntered(false);
+  }, [state.stage]);
+  const chooseCamera = async (source: 'local' | 'phone') => {
+    setEntered(false);
+    await session.selectSource(source);
+    void session.start();
+  };
   const { stage, counts, prediction, busy } = state;
   useEffect(() => {
     session.attachVideo(video.current!);
@@ -44,7 +59,8 @@ export function App() {
     heading.current?.focus();
   }, [stage]);
   const isCapture = stage === 'OPEN' || stage === 'FIST';
-  const showCamera = isCapture || stage === 'TEST' || stage === 'GAME' || stage === 'EXPLAIN';
+  const showCamera =
+    hub || isCapture || stage === 'TEST' || stage === 'GAME' || stage === 'EXPLAIN';
   const step = ['START', 'LOADING', 'OPEN', 'FIST'].includes(stage)
     ? 0
     : ['READY', 'TRAINING', 'TRAINED'].includes(stage)
@@ -101,8 +117,35 @@ export function App() {
   );
   return (
     <div className="app-shell">
-      <AppHeader />
-      <nav aria-label={pl.workshop}>
+      <AppHeader>
+        {hub && (
+          <a className="role-back" href="/">
+            Zmień rolę urządzenia
+          </a>
+        )}
+        <div
+          hidden={hub || phonePaired}
+          className="source-toolbar"
+          role="group"
+          aria-label="Źródło kamery"
+        >
+          <button
+            aria-pressed={state.source === 'local'}
+            disabled={state.resetting}
+            onClick={() => void chooseCamera('local')}
+          >
+            Kamera komputera
+          </button>
+          <button
+            aria-pressed={state.source === 'phone'}
+            disabled={state.resetting}
+            onClick={() => void chooseCamera('phone')}
+          >
+            Telefon
+          </button>
+        </div>
+      </AppHeader>
+      <nav hidden={hub} aria-label={pl.workshop}>
         <ol className="steps">
           {pl.steps.map((label, index) => (
             <li
@@ -116,8 +159,9 @@ export function App() {
           ))}
         </ol>
       </nav>
+      {!hub && state.source === 'phone' && !phonePaired && <PairingPanel session={session} />}
       <main
-        className={`${stage === 'GAME' ? 'playing' : ''} ${stage === 'START' ? 'welcome' : ''} ${stage === 'EXPLAIN' ? 'explaining' : ''}`}
+        className={`${hub ? 'camera-hub' : ''} ${stage === 'GAME' ? 'playing' : ''} ${stage === 'START' ? 'welcome' : ''} ${stage === 'EXPLAIN' ? 'explaining' : ''}`}
       >
         <section
           className={`visual-panel ${showCamera ? 'camera-visible' : ''}`}
@@ -127,8 +171,19 @@ export function App() {
           <div className={`camera-frame ${stage === 'GAME' ? 'compact' : ''}`} hidden={!showCamera}>
             <video ref={video} autoPlay muted playsInline aria-label={pl.camera} />
             <div className="camera-corners" />
-            <span className="live-label">{state.cameraLabel ? '● ' + pl.live : pl.empty}</span>
-            <span className="frame-label">{pl.frame}</span>
+            {hub && !state.cameraLabel && (
+              <div className="hub-preview-empty">
+                <span aria-hidden="true">◎</span>
+                <h2>Tu pojawi się Twój obraz</h2>
+                <p>Wybierz kamerę, aby zobaczyć podgląd.</p>
+              </div>
+            )}
+            <span hidden={hub && !state.cameraLabel} className="live-label">
+              {state.cameraLabel ? '● ' + pl.live : pl.empty}
+            </span>
+            <span hidden={hub && !state.cameraLabel} className="frame-label">
+              {pl.frame}
+            </span>
           </div>
           {!showCamera && (
             <div className="illustration">
@@ -190,13 +245,13 @@ export function App() {
               )}
             </div>
           )}
-          {showCamera && stage !== 'GAME' && (
+          {showCamera && !hub && stage !== 'GAME' && (
             <div className="camera-caption">
               <span>{pl.camera}</span>
-              <span>640 × 480 · {pl.local}</span>
+              <span>{state.source === 'phone' ? 'Kamera telefonu' : pl.local}</span>
             </div>
           )}
-          {(stage === 'TEST' || stage === 'GAME') && probabilities}
+          {!hub && (stage === 'TEST' || stage === 'GAME') && probabilities}
           {stage === 'GAME' && (
             <p className="controller-state">
               {state.controlMode === 'KEYBOARD'
@@ -207,7 +262,82 @@ export function App() {
             </p>
           )}
         </section>
-        <section className="task-panel" hidden={stage === 'EXPLAIN'}>
+        <section className="hub-controls" hidden={!hub}>
+          <span className="eyebrow">Zanim zaczniemy</span>
+          <h1>
+            {choosing
+              ? 'Wybierz swoją kamerę'
+              : state.source === 'phone'
+                ? 'Połącz aparat telefonu'
+                : 'Sprawdź swój podgląd'}
+          </h1>
+          <p className="lead" hidden={!choosing}>
+            Pokaż dłoń, naucz AI i zagraj. Zacznij od połączenia kamery.
+          </p>
+          <div
+            hidden={!choosing}
+            className="hub-source-options"
+            role="group"
+            aria-label="Wybór kamery"
+          >
+            <button
+              aria-label="Kamera komputera"
+              aria-pressed={state.source === 'local' && !!state.cameraLabel}
+              disabled={state.resetting}
+              onClick={() => void chooseCamera('local')}
+            >
+              <strong>Kamera komputera</strong>
+              <span>Użyj wbudowanej kamery lub kamerki USB</span>
+            </button>
+            <span className="hub-or">lub</span>
+            <button
+              aria-label="Telefon"
+              aria-pressed={state.source === 'phone'}
+              disabled={state.resetting}
+              onClick={() => void chooseCamera('phone')}
+            >
+              <strong>Telefon</strong>
+              <span>Dołącz aparat za pomocą kodu QR</span>
+            </button>
+          </div>
+          <div className="hub-selected" hidden={choosing}>
+            <span>{state.source === 'phone' ? 'Kamera telefonu' : 'Kamera komputera'}</span>
+            <button onClick={() => void session.selectSource('local')} disabled={state.resetting}>
+              Zmień kamerę
+            </button>
+          </div>
+          {hub && !choosing && state.source === 'phone' && <PairingPanel session={session} />}
+          {state.error && (
+            <div className="error" role="alert">
+              <p>{pl.errors[state.error]}</p>
+              <button disabled={busy} onClick={() => void session.retry()}>
+                {pl.retry}
+              </button>
+            </div>
+          )}
+          <div
+            className="hub-next"
+            hidden={!choosing && state.source === 'phone' && !state.cameraLabel}
+          >
+            <p role="status">
+              {state.cameraLabel
+                ? busy
+                  ? 'Obraz gotowy. Przygotowujemy AI…'
+                  : 'Kamera gotowa. Możemy zaczynać!'
+                : busy && state.source === 'local'
+                  ? 'Zezwól przeglądarce na dostęp do kamery.'
+                  : 'Połącz kamerę, aby przejść dalej.'}
+            </p>
+            <button
+              className="primary"
+              disabled={busy || !!state.error || !state.cameraLabel || stage !== 'OPEN'}
+              onClick={() => setEntered(true)}
+            >
+              Przejdź do AI Challenge <span>→</span>
+            </button>
+          </div>
+        </section>
+        <section className="task-panel" hidden={hub || stage === 'EXPLAIN'}>
           <div className="eyebrow">
             {stage === 'START'
               ? pl.workshop

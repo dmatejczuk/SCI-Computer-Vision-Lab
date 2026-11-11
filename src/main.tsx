@@ -1,6 +1,9 @@
-import { Component, type ReactNode } from 'react';
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './app/App';
+const App = lazy(() => import('./app/App').then((m) => ({ default: m.App })));
+const Phone = lazy(() =>
+  import('./features/phone-camera/PhoneCameraPage').then((m) => ({ default: m.PhoneCameraPage })),
+);
 import { pl } from './i18n/pl';
 import './styles.css';
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -22,8 +25,66 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
     );
   }
 }
+function Entry() {
+  const [role, setRole] = useState(
+    location.pathname === '/phone'
+      ? 'phone'
+      : new URLSearchParams(location.search).get('role') === 'station'
+        ? 'station'
+        : '',
+  );
+  useEffect(() => {
+    const back = () =>
+      setRole(
+        location.pathname === '/phone'
+          ? 'phone'
+          : new URLSearchParams(location.search).get('role') === 'station'
+            ? 'station'
+            : '',
+      );
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, []);
+  if (role === 'phone') return <Phone />;
+  if (role === 'station') return <App />;
+  return (
+    <main className="role-page">
+      <a className="role-brand" href="/">
+        SCI<span>_</span>
+      </a>
+      <div className="eyebrow">AI Vision Challenge</div>
+      <h1>Jak chcesz dołączyć?</h1>
+      <p>Wybierz rolę tego urządzenia.</p>
+      <div className="role-options">
+        <button
+          onClick={() => {
+            history.pushState(null, '', '/?role=station');
+            setRole('station');
+          }}
+        >
+          <span aria-hidden="true">▣</span>
+          <strong>Uruchom AI Challenge</strong>
+          <small>Stanowisko z podglądem, nauką AI i grą</small>
+        </button>
+        <button
+          onClick={() => {
+            history.pushState(null, '', '/phone');
+            setRole('phone');
+          }}
+        >
+          <span aria-hidden="true">◎</span>
+          <strong>Udostępnij kamerę</strong>
+          <small>Połącz ten telefon ze stanowiskiem za pomocą kodu</small>
+        </button>
+      </div>
+      <p className="note">Aparat włączysz dopiero po zatwierdzeniu połączenia.</p>
+    </main>
+  );
+}
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
-    <App />
+    <Suspense fallback={<p>Ładowanie…</p>}>
+      <Entry />
+    </Suspense>
   </ErrorBoundary>,
 );

@@ -1,3 +1,6 @@
+import type { VideoSource } from '../features/camera/VideoSource';
+import { FrameMonitor } from '../features/camera/FrameMonitor';
+import { RemoteCameraSource } from '../features/phone-camera/RemoteCameraSource';
 import { analyzeOcclusion } from '../features/explanation/Occlusion';
 import { PredictionHistory } from '../features/prediction/PredictionHistory';
 import { projectPca } from '../features/explanation/labMath';
@@ -30,9 +33,11 @@ type ErrorKind =
   | 'model'
   | 'training'
   | 'prediction'
+  | 'capture'
   | 'data'
   | 'explanation';
 interface Snapshot {
+  source: 'local' | 'phone';
   explanation: ExplanationState;
   modelRevision: number;
   stage: Stage;
@@ -56,6 +61,7 @@ interface Snapshot {
   slow: boolean;
 }
 const initial = (): Snapshot => ({
+  source: 'local',
   explanation: emptyExplanation(),
   modelRevision: 0,
   stage: 'START',
@@ -90,7 +96,87 @@ export class SessionManager {
   private occlusionAbort: AbortController | null = null;
   private labController: GestureController | null = null;
   game = new GameController();
-  camera = new CameraService(() => this.fail('lost', new Error('Camera track ended')));
+  camera = new CameraService(() => this.sourceLost());
+  phone = new RemoteCameraSource(
+    () => this.sourceLost(),
+    () => {
+      if (this.snapshot.source === 'phone' && this.snapshot.error === 'lost') {
+        if (this.video) this.frames.start(this.video);
+      }
+    },
+  );
+  frames = new FrameMonitor(
+    () => {
+      if (
+        ['OPEN', 'FIST', 'TEST', 'GAME'].includes(this.snapshot.stage) ||
+        (this.snapshot.stage === 'EXPLAIN' && !this.snapshot.explanation.snapshot)
+      )
+        this.sourceLost();
+    },
+    undefined,
+    () => this.restorePhoneFrames(),
+  );
+  private restorePhoneFrames() {
+    if (this.snapshot.source !== 'phone' || !this.phone.stream || this.snapshot.error !== 'lost')
+      return;
+    this.patch({ error: null, cameraLabel: this.phone.label });
+    this.phone.markRecovered();
+    const signal = this.abort.signal;
+    void this.predictor.idle().then(() => {
+      if (signal.aborted || this.snapshot.error || this.snapshot.source !== 'phone') return;
+      if (this.snapshot.stage === 'TEST') this.beginPrediction();
+      else if (this.snapshot.stage === 'EXPLAIN' && !this.snapshot.explanation.snapshot)
+        this.beginPrediction(true);
+    });
+  }
+  get source(): VideoSource {
+    return this.snapshot.source === 'phone' ? this.phone : this.camera;
+  }
+  private sourceLost() {
+    this.gestures.reset();
+    this.labController?.reset();
+    this.fail('lost', new Error('Brak nowych klatek. Wznów kamerę lub sparuj telefon ponownie.'));
+  }
+  private requireFrame() {
+    if (!this.frames.fresh || !this.source.stream)
+      throw new Error('Brak aktualnego obrazu. Wznów źródło kamery.');
+  }
+  private async waitForFrame(signal: AbortSignal) {
+    // Hidden previews may stop presenting frames. Give a newly visible preview time
+    // to deliver a fresh frame, without ever reading its old pixels.
+    const deadline = performance.now() + 2200;
+    while (!signal.aborted && !this.frames.fresh && performance.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 33));
+    if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+    this.requireFrame();
+  }
+  async selectSource(source: 'local' | 'phone') {
+    if (this.snapshot.resetting) return;
+    this.abort.abort();
+    this.occlusionAbort?.abort();
+    this.predictor.stop();
+    this.pause();
+    this.camera.stop();
+    this.phone.stop();
+    this.frames.stop();
+    this.patch({ resetting: true });
+    await Promise.all([this.operation, this.predictor.idle()]);
+    this.clearExplanation();
+    this.abort = new AbortController();
+    this.patch({
+      source,
+      stage: 'START',
+      busy: false,
+      resetting: false,
+      paused: false,
+      cameraLabel: '',
+      error: null,
+    });
+  }
+  async repairPhone() {
+    await this.selectSource('phone');
+    await this.start();
+  }
   private snapshot = initial();
   private listeners = new Set<() => void>();
   private abort = new AbortController();
@@ -141,6 +227,12 @@ export class SessionManager {
     return this.operation;
   }
   private fail(kind: ErrorKind, error: unknown) {
+    if (
+      ['prediction', 'capture'].includes(kind) &&
+      this.snapshot.source === 'phone' &&
+      !this.frames.fresh
+    )
+      kind = 'lost';
     console.error(`[Session:${kind}]`, error);
     if (kind === 'camera') {
       if (error instanceof DOMException && error.name === 'NotAllowedError') kind = 'denied';
@@ -160,18 +252,20 @@ export class SessionManager {
     });
   }
   async start() {
+    if (this.snapshot.busy || this.snapshot.resetting) return;
     this.retryAction = () => this.start();
     this.patch({ stage: 'LOADING' });
     return this.run(async (signal) => {
       if (!this.video) throw new Error('Video not attached');
       try {
-        await abortable(this.camera.start(this.video), signal);
+        await abortable(this.source.start(this.video), signal);
       } catch (error) {
         if (!signal.aborted) this.fail('camera', error);
         return;
       }
       if (signal.aborted) return;
-      this.patch({ cameraLabel: this.camera.label });
+      this.frames.start(this.video!);
+      this.patch({ cameraLabel: this.source.label });
       await this.extractor.load(signal);
       if (!signal.aborted) this.patch({ stage: 'OPEN' });
     }, 'model');
@@ -186,7 +280,9 @@ export class SessionManager {
       );
       for (let index = 0; index < count && !signal.aborted; index++) {
         const started = performance.now();
+        await this.waitForFrame(signal);
         const embedding = await this.extractor.extract(this.video!);
+        this.requireFrame();
         if (signal.aborted) break;
         this.dataset.add(label, embedding);
         this.patch({
@@ -198,7 +294,7 @@ export class SessionManager {
           setTimeout(resolve, Math.max(0, config.captureInterval - (performance.now() - started))),
         );
       }
-    }, 'prediction');
+    }, 'capture');
   }
   next() {
     if (this.snapshot.busy) return;
@@ -212,6 +308,7 @@ export class SessionManager {
       this.fail('data', new Error('Insufficient samples'));
       return Promise.resolve();
     }
+    if (this.snapshot.busy || this.snapshot.resetting) return Promise.resolve();
     this.predictor.stop();
     this.retryAction = () => this.train();
     this.patch({ stage: 'TRAINING' });
@@ -242,6 +339,7 @@ export class SessionManager {
           if (!laboratory) this.gestures.reset();
           return;
         }
+        await this.waitForFrame(signal);
         const started = performance.now();
         const result = await this.pipeline.predict(this.video!, this.snapshot.settings);
         if (
@@ -251,6 +349,7 @@ export class SessionManager {
             : ['TEST', 'GAME'].includes(this.snapshot.stage))
         )
           return;
+        this.requireFrame();
         const now = performance.now();
         const { open, fist } = result.classScores;
         const jump = controller.update(open, fist);
@@ -296,11 +395,11 @@ export class SessionManager {
       gameRound: this.snapshot.gameRound + 1,
       controlMode: keyboardOnly ? 'KEYBOARD' : 'GESTURE',
     });
-    if (!keyboardOnly && this.snapshot.trained && this.camera.stream) this.beginPrediction();
+    if (!keyboardOnly && this.snapshot.trained && this.source.stream) this.beginPrediction();
   }
   exitDiagnosticGame() {
     this.game.reset();
-    this.patch({ stage: this.camera.stream ? 'OPEN' : 'START', score: 0 });
+    this.patch({ stage: this.source.stream ? 'OPEN' : 'START', score: 0 });
   }
   improve() {
     this.clearExplanation(true);
@@ -316,6 +415,8 @@ export class SessionManager {
     this.clearExplanation();
     this.predictor.stop();
     this.camera.stop();
+    this.phone.stop();
+    this.frames.stop();
     this.patch({ stage: 'END', cameraLabel: '' });
   }
   pause() {
@@ -324,6 +425,10 @@ export class SessionManager {
     this.patch({ paused: true, armed: false });
   }
   resume() {
+    if (this.snapshot.controlMode === 'GESTURE' && !this.frames.fresh) {
+      this.sourceLost();
+      return;
+    }
     this.gestures.reset();
     this.game.setPaused(false);
     this.patch({ paused: false, armed: false });
@@ -338,12 +443,14 @@ export class SessionManager {
     this.patch({ settings: { ...settings }, armed: false });
   }
   restartCamera(deviceId?: string) {
+    if (this.snapshot.source === 'phone') return this.repairPhone();
     this.predictor.stop();
     if (this.snapshot.stage === 'GAME') this.pause();
     return this.run(async (signal) => {
-      await abortable(this.camera.start(this.video!, deviceId), signal);
+      await abortable(this.source.start(this.video!, deviceId), signal);
       if (signal.aborted) return;
-      this.patch({ cameraLabel: this.camera.label });
+      this.frames.start(this.video!);
+      this.patch({ cameraLabel: this.source.label });
       if (
         this.snapshot.stage === 'TEST' ||
         (this.snapshot.stage === 'GAME' && this.snapshot.controlMode === 'GESTURE')
@@ -374,6 +481,8 @@ export class SessionManager {
     this.clearExplanation();
     this.predictor.stop();
     this.camera.stop();
+    this.phone.stop();
+    this.frames.stop();
     this.game.reset();
     this.patch({ resetting: true, stage: 'START' });
     await Promise.all([this.operation, this.predictor.idle()]);
@@ -426,6 +535,7 @@ export class SessionManager {
       return Promise.resolve();
     this.predictor.stop();
     return this.run(async (signal) => {
+      await this.waitForFrame(signal);
       const current = this.snapshot.explanation;
       const snapshot = await this.snapshotCapture.capture(
         this.video!,
@@ -435,7 +545,7 @@ export class SessionManager {
         this.snapshot.modelRevision,
         signal,
       );
-      if (signal.aborted) {
+      if (signal.aborted || !this.frames.fresh) {
         releaseSnapshot(snapshot);
         return;
       }

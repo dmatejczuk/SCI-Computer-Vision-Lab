@@ -3,5 +3,17 @@ services:
     build: .
     image: ai-vision-challenge:1.0.0
     restart: unless-stopped
+    depends_on:
+      signaling:
+        condition: service_healthy
     ports:
       - '127.0.0.1:80:80'
+  signaling:
+    build:
+      context: .
+      dockerfile: Dockerfile.signaling
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: http://localhost
+    mem_limit: 256m
+    cpus: 1

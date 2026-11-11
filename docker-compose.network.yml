@@ -4,6 +4,9 @@ services:
     build: .
     image: ai-vision-challenge:1.0.0
     restart: unless-stopped
+    depends_on:
+      signaling:
+        condition: service_healthy
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile.network', '--adapter', 'caddyfile']
     ports:
       - '80:80'
@@ -12,9 +15,23 @@ services:
     environment:
       APP_HOST: ${APP_HOST:?Set APP_HOST to the HTTPS hostname (without scheme or port)}
       APP_TLS_ISSUER: ${APP_TLS_ISSUER:-internal}
+      SIGNALING_ORIGIN: wss://${APP_HOST:?Set APP_HOST}
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+  signaling:
+    build:
+      context: .
+      dockerfile: Dockerfile.signaling
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: https://${APP_HOST:?Set APP_HOST}
+      TURN_URLS: ${TURN_URLS:-}
+      TURN_SECRET: ${TURN_SECRET:-}
+      ICE_RELAY_ONLY: ${ICE_RELAY_ONLY:-false}
+      CLIENT_SOCKET_LIMIT: ${CLIENT_SOCKET_LIMIT:-10}
+    mem_limit: 256m
+    cpus: 1
 volumes:
   caddy_data:
   caddy_config:

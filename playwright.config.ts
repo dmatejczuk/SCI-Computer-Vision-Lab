@@ -19,10 +19,17 @@ export default defineConfig({
   },
   webServer: productionUrl
     ? undefined
-    : {
-        command: 'npm run dev',
-        url: 'http://localhost:5173',
-        reuseExistingServer: !process.env.CI,
-      },
+    : [
+        {
+          command: 'npm run dev',
+          url: 'http://localhost:5173',
+          reuseExistingServer: !process.env.CI,
+        },
+        {
+          command: 'npm run dev:signaling',
+          url: 'http://localhost:3001/api/health',
+          reuseExistingServer: !process.env.CI,
+        },
+      ],
   reporter: [['list'], ['html', { open: 'never' }]],
 });

@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: { '/api': 'http://127.0.0.1:3001', '/ws': { target: 'ws://127.0.0.1:3001', ws: true } },
+  },
   // Use Phaser's official pre-minified distribution to avoid reprocessing its large UMD bundle.
   resolve: { alias: [{ find: /^phaser$/, replacement: 'phaser/dist/phaser.min.js' }] },
   build: {

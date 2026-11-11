@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import { SCI_WEBSITE_URL } from '../../config/branding';
 import { pl } from '../../i18n/pl';
-export function AppHeader() {
+export function AppHeader({ children }: { children?: ReactNode }) {
   return (
     <header>
       <div className="brand">
@@ -18,7 +19,7 @@ export function AppHeader() {
           <small>{pl.school}</small>
         </span>
       </div>
-      <div className="workshop-tag">{pl.workshop}</div>
+      {children ?? <div className="workshop-tag">{pl.workshop}</div>}
     </header>
   );
 }
