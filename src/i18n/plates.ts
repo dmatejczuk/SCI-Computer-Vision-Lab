@@ -149,6 +149,10 @@ export const plates = {
     shapes: 'Kształty',
     canvas: 'Plansza z blokami',
   },
+  reader: {
+    found: (found: number, expected: number) => `Znaleziono ${found} / ${expected} znaków`,
+    readText: 'Odczytany tekst',
+  },
   perf: {
     title: 'Test wydajności czytnika tablic',
     open: 'Test wydajności czytnika tablic',

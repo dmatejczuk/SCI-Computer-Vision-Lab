@@ -1,5 +1,7 @@
 /** Typed messages between the plate module UI and its OpenCV.js worker. */
 import type { Graph, Point } from '../graph/types';
+import type { PlateSceneOptions } from '../recognition/plateImage';
+import type { Recognized } from '../recognition/recognize';
 
 export interface BenchmarkTiming {
   name: string;
@@ -11,7 +13,9 @@ export type FrameSource =
   /** A live camera frame, transferred without copying. */
   | { kind: 'camera'; bitmap: ImageBitmap }
   /** The frame stored by the last `freeze` message. */
-  | { kind: 'frozen' };
+  | { kind: 'frozen' }
+  /** A plate photo generated from the tile font (built-in level images). */
+  | { kind: 'sample'; text: string; scene: PlateSceneOptions };
 
 export interface ProcessOptions {
   /** Width of the image the operations run on (640, or 320 on slow computers). */
@@ -44,6 +48,8 @@ export interface ProcessResult {
   output?: ImageBitmap;
   /** The plate found by the first "Find plate" block, in working-image coordinates. */
   region?: Point[];
+  /** Characters read from the Output block's image (boxes in that image's pixels). */
+  reading?: { characters: Recognized[]; size: { width: number; height: number } };
   liveMats: number;
   cachedMats: number;
 }
@@ -65,7 +71,14 @@ export type ToWorker =
   | { type: 'reset'; id: number };
 
 export type FromWorker =
-  | { type: 'ready'; id: number; loadMs: number; openCvBytes: number | null; version: string }
+  | {
+      type: 'ready';
+      id: number;
+      loadMs: number;
+      openCvBytes: number | null;
+      version: string;
+      templates: number;
+    }
   | {
       type: 'benchmark';
       id: number;

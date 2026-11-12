@@ -1,4 +1,5 @@
 import type { BlockType, Point, SocketType } from '../graph/types';
+import { plateConfig } from '../plateConfig';
 import type { CV, Mat } from './cv';
 import type { MatScope } from './scope';
 
@@ -226,8 +227,13 @@ export const OPERATIONS: Partial<Record<BlockType, Op>> = {
     const sy = input.mat.rows / region.base.rows;
     const quad = region.quad.map((p) => ({ x: p.x * sx, y: p.y * sy }));
     const { width, height } = quadSize(quad);
-    const outHeight = Math.max(24, Math.min(240, Math.round(height)));
-    const outWidth = Math.max(48, Math.min(960, Math.round((width / height) * outHeight)));
+    // A tilted plate looks narrower than it is. When the outline resembles our plate frame,
+    // straighten it to the known proportions so characters keep their true shape.
+    const measured = width / Math.max(1, height);
+    const known = plateConfig.plateAspect;
+    const aspect = measured > known * 0.6 && measured < known * 1.6 ? known : measured;
+    const outHeight = Math.max(24, Math.min(200, Math.round(height)));
+    const outWidth = Math.max(48, Math.min(1000, Math.round(aspect * outHeight)));
     const from = scope.track(
       cv.matFromArray(
         4,

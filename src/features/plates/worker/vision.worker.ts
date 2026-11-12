@@ -1,5 +1,10 @@
 /// <reference lib="webworker" />
 import type { Point } from '../graph/types';
+import { plateConfig } from '../plateConfig';
+import { loadGlyphFont, type GlyphFont } from '../recognition/font';
+import { renderPlateScene } from '../recognition/plateImage';
+import { recognize } from '../recognition/recognize';
+import { buildTemplates, type Template } from '../recognition/templates';
 import { loadOpenCv, type CV, type Mat } from './cv';
 import { runBenchmark } from './benchmark';
 import { executeGraph, ResultCache } from './engine';
@@ -20,6 +25,60 @@ let cv: CV | null = null;
 let frozen: ImageData | null = null;
 let frozenId = 0;
 const cache = new ResultCache();
+let font: GlyphFont | null = null;
+let templates: Template[] = [];
+/** Generated level images, by key (text + scene options). */
+const samples = new Map<string, ImageData>();
+
+/** Loads the tile font (bundled, same origin) and builds the character templates once. */
+async function loadFont() {
+  if (font) return;
+  const response = await fetch(plateConfig.font.file);
+  if (!response.ok) throw new Error(`Tile font missing: ${plateConfig.font.file}`);
+  font = loadGlyphFont(await response.arrayBuffer());
+  templates = buildTemplates(font, plateConfig.charset);
+}
+
+function sampleImage(text: string, scene: Parameters<typeof renderPlateScene>[2]): ImageData {
+  const key = JSON.stringify([text, scene]);
+  let image = samples.get(key);
+  if (!image) {
+    const rendered = renderPlateScene(font!, text, scene);
+    image = new ImageData(
+      rendered.data as Uint8ClampedArray<ArrayBuffer>,
+      rendered.width,
+      rendered.height,
+    );
+    samples.set(key, image);
+  }
+  return image;
+}
+
+/** Output view: the binary image with a box around every character that was read. */
+function readingDisplay(
+  cv: CV,
+  scope: MatScope,
+  mat: Mat,
+  characters: {
+    box: { x: number; y: number; width: number; height: number };
+    confidence: number;
+  }[],
+): Mat {
+  const out = toRgba(cv, scope, mat);
+  const thickness = Math.max(1, Math.round(mat.cols / 320));
+  for (const { box, confidence } of characters) {
+    const color =
+      confidence >= 75 ? new cv.Scalar(60, 220, 90, 255) : new cv.Scalar(240, 170, 40, 255);
+    cv.rectangle(
+      out,
+      new cv.Point(box.x - 2, box.y - 2),
+      new cv.Point(box.x + box.width + 1, box.y + box.height + 1),
+      color,
+      thickness,
+    );
+  }
+  return out;
+}
 
 function post(message: FromWorker, transfer: Transferable[] = []) {
   self.postMessage(message, transfer);
@@ -95,7 +154,12 @@ async function process(
 ): Promise<ProcessResult> {
   const started = performance.now();
   const { options, graph, source } = message;
-  const image = source.kind === 'camera' ? bitmapToImageData(source.bitmap) : frozen;
+  const image =
+    source.kind === 'camera'
+      ? bitmapToImageData(source.bitmap)
+      : source.kind === 'sample'
+        ? sampleImage(source.text, source.scene)
+        : frozen;
   if (!image) throw new Error('No frozen frame');
   const live = source.kind === 'camera';
   if (live) cache.clear();
@@ -111,8 +175,12 @@ async function process(
     }
     const run = executeGraph(cv, scope, graph, input, {
       cache: live ? undefined : cache,
-      frame: `frozen-${frozenId}-${input.cols}`,
+      frame:
+        source.kind === 'sample'
+          ? `sample-${JSON.stringify([source.text, source.scene])}-${input.cols}`
+          : `frozen-${frozenId}-${input.cols}`,
     });
+    let reading: ProcessResult['reading'];
     // The picture each node shows: its output, or what it received (views).
     const displays = new Map<string, Mat>();
     let region: Point[] | undefined;
@@ -127,9 +195,22 @@ async function process(
         const left = imageOf(inputs.left);
         const right = imageOf(inputs.right);
         if (left && right) displays.set(node.id, sideBySide(cv, scope, left, right));
-      } else if (node.type === 'preview' || node.type === 'output') {
+      } else if (node.type === 'preview') {
         const mat = imageOf(inputs.in);
         if (mat && run.runs.has(node.id)) displays.set(node.id, mat);
+      } else if (node.type === 'output') {
+        const mat = imageOf(inputs.in);
+        if (mat && run.runs.has(node.id)) {
+          const started = performance.now();
+          const { characters } = recognize(
+            { width: mat.cols, height: mat.rows, data: mat.data },
+            templates,
+            plateConfig.slots + 3,
+          );
+          reading = { characters, size: { width: mat.cols, height: mat.rows } };
+          run.runs.set(node.id, { ms: performance.now() - started });
+          displays.set(node.id, readingDisplay(cv, scope, mat, characters));
+        }
       }
     }
     const nodes: Record<string, NodeResult> = {};
@@ -149,6 +230,7 @@ async function process(
       size: { width: input.cols, height: input.rows },
       nodes,
       region,
+      reading,
       liveMats: 0,
       cachedMats: 0,
     };
@@ -172,6 +254,7 @@ async function handle(message: ToWorker) {
   if (message.type === 'init') {
     const started = performance.now();
     cv = await loadOpenCv();
+    await loadFont();
     const version = /Version control:\s*(\S+)/.exec(cv.getBuildInformation())?.[1] ?? '?';
     post({
       type: 'ready',
@@ -179,10 +262,12 @@ async function handle(message: ToWorker) {
       loadMs: performance.now() - started,
       openCvBytes: openCvBytes(),
       version,
+      templates: templates.length,
     });
     return;
   }
   if (!cv) cv = await loadOpenCv();
+  await loadFont();
   if (message.type === 'benchmark') {
     const begin = performance.now();
     const image = message.bitmap ? bitmapToImageData(message.bitmap) : testPattern(1280, 720);
@@ -202,6 +287,7 @@ async function handle(message: ToWorker) {
   } else if (message.type === 'unfreeze' || message.type === 'reset') {
     frozen = null;
     cache.clear();
+    if (message.type === 'reset') samples.clear();
     post({ type: 'ok', id: message.id });
   }
 }

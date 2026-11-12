@@ -1,11 +1,20 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { SessionManager } from '../../services/SessionManager';
 import { plates as text } from '../../i18n/plates';
 import { BLOCKS } from './graph/nodes';
 import type { BlockType } from './graph/types';
 import { NodeEditor } from './editor/NodeEditor';
+import { OutputStatus } from './editor/OutputStatus';
+import { plateConfig } from './plateConfig';
 import { plateSessionFor } from './PlateSession';
 import './plates.css';
+
+// The tile font, also used to show the read text in plate style ("Plate" font family).
+if (typeof FontFace !== 'undefined')
+  void new FontFace('Plate', `url(${plateConfig.font.file})`)
+    .load()
+    .then((face) => document.fonts.add(face))
+    .catch(() => {});
 
 const ALL_BLOCKS = (Object.keys(BLOCKS) as BlockType[]).filter((type) => !BLOCKS[type].fixed);
 
@@ -24,6 +33,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
     };
   }, [session, plates]);
   const t = text.editor;
+  const outputStatus = useMemo(() => <OutputStatus plates={plates} />, [plates]);
   return (
     <main className="plates" aria-labelledby="plates-title">
       <div className="plates-toolbar">
@@ -59,7 +69,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
         </p>
       )}
       <div className="plates-workspace">
-        <NodeEditor plates={plates} blocks={ALL_BLOCKS} />
+        <NodeEditor plates={plates} blocks={ALL_BLOCKS} outputStatus={outputStatus} />
         <figure className="camera-dock">
           {/* No mirroring here: a mirrored plate would show reversed characters. */}
           <video ref={video} autoPlay muted playsInline aria-label={text.cameraLabel} />

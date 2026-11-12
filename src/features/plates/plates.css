@@ -443,3 +443,31 @@ main.plates[hidden] {
   object-fit: contain;
   background: #0d1715;
 }
+
+/* Character counter in the Output block */
+.output-status {
+  margin: 6px 8px 0;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--color-soft);
+}
+.output-status.ok {
+  background: #dff3e6;
+  color: var(--color-success);
+}
+.output-status.partial {
+  background: #fff6dc;
+  color: var(--color-warning);
+}
+.output-count {
+  margin: 0;
+  font-weight: 700;
+  font-size: 12px;
+}
+.output-text {
+  margin: 4px 0 0;
+  font-family: 'Plate', monospace;
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: var(--color-text);
+}

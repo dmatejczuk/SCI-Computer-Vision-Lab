@@ -117,7 +117,7 @@ export const BLOCKS: Record<BlockType, BlockDef> = {
     inputs: [{ id: 'in', accepts: ['gray'] }],
     output: always('binary'),
     params: [
-      { id: 'window', min: 3, max: 75, step: 2, default: 31 },
+      { id: 'window', min: 3, max: 75, step: 2, default: 15 },
       { id: 'sensitivity', min: 0, max: 30, step: 1, default: 10 },
     ],
     opencv: 'cv.adaptiveThreshold',

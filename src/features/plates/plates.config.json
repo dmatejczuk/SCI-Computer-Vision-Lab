@@ -1,0 +1,19 @@
+{
+  "$comment": "Tile font and character set of the plate reader. To change the font: put the font file (TTF/OTF) into public/plates/fonts/, set font.file and font.sha256 (npm run verify:plates prints the checksum on mismatch) and adjust charset to the printed tiles. plateAspect is the width/height of the light tile area inside the frame; the crop block uses it to straighten a tilted plate without squashing the characters. Everything else (templates, level images, tests) is generated from this file.",
+  "font": {
+    "file": "/plates/fonts/DejaVuSansCondensed-Bold.ttf",
+    "sha256": "38098d0b8edd8430a0f53fb2831b5d36037563a998a620d3c87a4d7591766d20",
+    "name": "DejaVu Sans Condensed Bold",
+    "license": "Bitstream Vera / DejaVu font license, see public/plates/fonts/LICENSE-DejaVu.txt"
+  },
+  "charset": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  "slots": 7,
+  "plateAspect": 5.17,
+  "sampleText": "KOT2026",
+  "colors": {
+    "frame": "#26302d",
+    "tile": "#f3f3ee",
+    "seam": "#c8ccc4",
+    "character": "#151a18"
+  }
+}

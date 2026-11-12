@@ -2,6 +2,9 @@ import type { SessionManager } from '../../services/SessionManager';
 import { VisionClient, WorkerError, grabFrame } from './VisionClient';
 import { connect, createNode } from './graph/graph';
 import type { BlockType, Graph } from './graph/types';
+import { plateConfig } from './plateConfig';
+import type { PlateSceneOptions } from './recognition/plateImage';
+import { Voter, type VotedCharacter } from './recognition/recognize';
 import {
   resultBitmaps,
   type FrameSource,
@@ -39,6 +42,12 @@ export interface PlateState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: 'csp' | 'failed' | null;
   frozen: boolean;
+  /** A generated plate photo used instead of the camera (level 1). */
+  sample: { text: string; scene: PlateSceneOptions } | null;
+  /** Characters read from the Output block, stabilised over recent frames. */
+  reading: VotedCharacter[];
+  /** How many characters a correct result should have. */
+  expected: number;
   workWidth: number;
   fps: number;
   passMs: number;
@@ -53,6 +62,9 @@ const initial = (): PlateState => ({
   status: 'idle',
   error: null,
   frozen: false,
+  sample: null,
+  reading: [],
+  expected: plateConfig.slots,
   workWidth: FULL_WIDTH,
   fps: 0,
   passMs: 0,
@@ -117,8 +129,9 @@ export class PlateSession {
 
   /** Whether the current pass needs live camera frames. */
   protected get live() {
-    return !this.state.frozen;
+    return !this.state.frozen && !this.state.sample;
   }
+  private voter = new Voter(7);
 
   async attach(video: HTMLVideoElement) {
     this.video = video;
@@ -181,7 +194,16 @@ export class PlateSession {
   }
 
   private setGraph(graph: Graph) {
+    this.voter.clear();
     this.patch({ graph, canUndo: this.past.length > 0, canRedo: this.future.length > 0 });
+    this.invalidate();
+  }
+
+  /** Uses a generated plate photo (or the camera again with null). */
+  setSample(sample: PlateState['sample'], expected = sample?.text.length ?? plateConfig.slots) {
+    this.voter.clear();
+    this.patch({ sample, expected, reading: [] });
+    this.session.setPlatesLive(this.running && this.live);
     this.invalidate();
   }
 
@@ -235,7 +257,8 @@ export class PlateSession {
     if (!this.running || this.inFlight) return;
     const generation = this.generation;
     let source: FrameSource | null = null;
-    if (this.state.frozen) source = { kind: 'frozen' };
+    if (this.state.sample) source = { kind: 'sample', ...this.state.sample };
+    else if (this.state.frozen) source = { kind: 'frozen' };
     else if (this.video && this.session.frames.fresh) {
       const bitmap = await grabFrame(this.video, FULL_WIDTH).catch(() => null);
       if (bitmap) source = { kind: 'camera', bitmap };
@@ -291,9 +314,19 @@ export class PlateSession {
     this.afterResult(result);
   }
 
-  /** Hook for subclasses / later phases. */
-  protected afterResult(result: ProcessResult) {
-    void result;
+  private afterResult(result: ProcessResult) {
+    // A still image gives the same reading every time: one vote is enough.
+    if (!this.live) this.voter.clear();
+    this.voter.push(result.reading?.characters ?? []);
+    const reading = this.voter.result();
+    const key = (list: VotedCharacter[]) =>
+      list.map((c) => `${c.char}${c.confidence}${c.alternatives.map((a) => a.char)}`).join();
+    if (key(reading) !== key(this.state.reading)) this.patch({ reading });
+  }
+
+  /** The text read from the current Output image. */
+  get text() {
+    return this.state.reading.map((c) => c.char).join('');
   }
 
   async freeze() {
@@ -301,6 +334,7 @@ export class PlateSession {
     const bitmap = await grabFrame(this.video, FULL_WIDTH);
     if (!bitmap) return;
     await this.vision.request<'ok'>({ type: 'freeze', bitmap }, [bitmap]);
+    this.voter.clear();
     this.patch({ frozen: true });
     this.session.setPlatesLive(this.live);
     this.invalidate();
@@ -325,6 +359,7 @@ export class PlateSession {
     this.recent = [];
     this.past = [];
     this.future = [];
+    this.voter.clear();
     this.lastChange = null;
     this.dirty = true;
     this.state = initial();
