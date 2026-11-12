@@ -19,3 +19,6 @@ certs/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Local planning notes (not committed)
+plans/
