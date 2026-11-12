@@ -1,3 +1,45 @@
+# Phone viewfinder controls and disconnection screen - 2026-11-11
+
+While streaming, the phone page shows a plain full-screen viewfinder instead of the step page with
+the crop square and hand hint. A toolbar (bottom in portrait, right edge in landscape, with
+safe-area insets) offers camera switch, left-right flip, upside-down flip, fullscreen and stop.
+Flips redraw camera frames into a canvas whose `captureStream` track replaces the sent track via
+`replaceTrack` (no renegotiation); with no flip the camera track is sent directly. The preview
+applies the same flips in CSS, so the computer receives exactly what the phone shows. A 90°
+rotation was tried and dropped after a phone test: an unrotated preview with a rotated output was
+confusing, and browsers already rotate camera frames with the device. The setting is stored per
+phone in `localStorage`. After approval the phone starts the camera by itself (once per pairing;
+**Uruchom aparat** stays as a fallback), so fullscreen is entered with the **Pełny ekran** button,
+since browsers require a tap for it. No notice covers the viewfinder while streaming, and a Wake
+Lock keeps the screen on while live. Pairing notices no longer prefix the computer's name ("Komputer
+Windows: ..."); the phone's name is still shown in the approval request.
+
+On the computer, a paired phone without fresh frames now opens a full-screen **Rozłączono
+urządzenie** overlay with a spinner (while the pairing can resume), **Połącz nowe urządzenie** and
+**Użyj kamery komputera**; it closes by itself when frames return. The same overlay (`CameraLost`)
+handles every lost camera image, phone or local camera (**Rozłączono kamerę** with **Spróbuj
+ponownie** and **Użyj telefonu**), in all stages including camera setup and the laboratory, and
+replaces the inline "Utracono połączenie z kamerą" error; collect actions stay hidden while it is
+shown. The overlay uses a solid tint:
+a `backdrop-filter` blur over live video delayed the page by about 10 s in the software-rendered
+test browser and would burden weak classroom PCs. The QR panel's manual address now uses the
+server's public origin (the one encoded in the QR) instead of the desktop page URL.
+
+- TypeScript, ESLint and Prettier passed. Unit tests (`tests/PhoneView.test.ts`) cover the flip
+  preview transforms and storage fallbacks; all 60 unit tests passed.
+- Playwright: the viewfinder scenario checks the toolbar at 390×844 and 844×390 without horizontal
+  scroll, auto fullscreen toggling, and that each flip moves the fake camera's timestamp in the
+  frames received by the computer (bottom-left for upside down, top-right for left-right).
+  Pairing scenarios check the disconnection overlay, its auto-close on recovery and re-pairing from
+  it, plus the manual address; the local camera-loss scenario now recovers through the overlay.
+  Full suite: 19/19 passed. Under parallel load single unrelated scenarios (`snapshot pipeline`,
+  `complete real ML workshop`) each failed once in earlier runs and passed on rerun.
+
+A first physical phone test led to the flip-only design and the QR address fix. The browser's own
+fullscreen notice briefly covers the toolbar; this is accepted. Not yet verified on hardware: the
+flip controls, the disconnection overlay, iPhone Safari layout and canvas capture performance on
+older devices.
+
 # Workshop view with a paired phone - 2026-11-11
 
 After pairing, the workshop view no longer shows the phone pairing banner or the
@@ -149,7 +191,7 @@ Validation results:
 - Physical webcam permissions/hardware remain subject to the on-site checklist; browser checks
   use a synthetic camera with real application code.
 
- Older sections are
+Older sections are
 historical application test records; their preview ports and prior HTTPS deployment do not
 specify current startup behavior. See [DEPLOYMENT.md](DEPLOYMENT.md) for current instructions.
 

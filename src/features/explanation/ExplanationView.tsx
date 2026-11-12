@@ -224,7 +224,7 @@ function Laboratory({
         ))}
       </nav>
       <p className="lab-description">{t.descriptions[step - 1]}</p>
-      {state.error && (
+      {state.error && state.error !== 'lost' && (
         <div className="error" role="alert">
           <p>{pl.errors[state.error]}</p>
           <button disabled={state.busy} onClick={() => void session.retry()}>
@@ -485,7 +485,7 @@ export function ExplanationView({ session }: { session: SessionManager }) {
       >
         {state.busy ? t.busy : t.freeze}
       </button>
-      {state.error && (
+      {state.error && state.error !== 'lost' && (
         <div className="error" role="alert">
           <p>{pl.errors[state.error]}</p>
           <button disabled={state.busy} onClick={() => void session.retry()}>

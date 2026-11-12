@@ -1801,41 +1801,6 @@ canvas {
   padding: 12px;
   font: inherit;
 }
-.phone-preview {
-  position: relative;
-  width: 100%;
-  max-height: 55dvh;
-  aspect-ratio: 4/3;
-  background: #172f2c;
-  overflow: hidden;
-}
-.phone-preview video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transform: scaleX(-1);
-}
-.phone-crop {
-  position: absolute;
-  width: min(100%, 55dvh);
-  height: 100%;
-  max-width: 100%;
-  aspect-ratio: 1;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border: 2px solid #d7f26b;
-  pointer-events: none;
-}
-.phone-preview span {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  padding: 4px;
-  background: #172f2c;
-  color: white;
-  font-size: 11px;
-}
 .pair-code {
   font-size: 22px;
 }
@@ -2029,19 +1994,6 @@ canvas {
   color: var(--color-danger);
   border-color: transparent;
 }
-.phone-preview {
-  border-radius: 18px;
-  margin: 0 auto 16px;
-}
-.phone-preview span {
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 12px;
-  white-space: nowrap;
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: #172f2ce6;
-}
 .phone-page .pair-code {
   border: 1px solid var(--color-line);
   border-radius: 18px;
@@ -2075,6 +2027,189 @@ canvas {
   cursor: pointer;
   min-height: 44px;
   text-align: center;
+}
+/* Overlay whenever the camera image is lost (phone or local camera). */
+.camera-lost {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  /* Solid tint, no backdrop blur: blurring live video is costly on weak classroom PCs. */
+  background: #0b1f1de6;
+}
+.camera-lost-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(100%, 440px);
+  padding: 32px 28px 24px;
+  border-radius: 20px;
+  background: var(--color-surface);
+  box-shadow: 0 16px 48px #0005;
+  text-align: center;
+}
+.camera-lost-card:focus {
+  outline: none;
+}
+.camera-lost-card h2 {
+  margin: 4px 0 0;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+.camera-lost-card p {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+.camera-lost-card button {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+  text-align: center;
+}
+.camera-lost-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--color-line);
+  border-top-color: var(--color-success);
+  border-radius: 50%;
+  animation: camera-lost-spin 0.9s linear infinite;
+}
+@keyframes camera-lost-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .camera-lost-spinner {
+    animation-duration: 3s;
+  }
+}
+/* Live phone camera: a plain full-screen viewfinder with a control bar. */
+.phone-page.phone-live {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+}
+.phone-stage {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+.phone-stage[hidden],
+.phone-help[hidden] {
+  display: none;
+}
+.phone-view {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.phone-view video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.phone-live-badge {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #0009;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+.phone-page .phone-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: auto;
+  transform: translate(-50%, -50%);
+  padding: 0 24px;
+}
+.phone-controls {
+  display: flex;
+  justify-content: space-evenly;
+  gap: 4px;
+  padding: 10px max(8px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  background: #000;
+}
+.phone-page .phone-controls button {
+  display: flex;
+  flex: 0 1 76px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: 56px;
+  min-height: 64px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.phone-controls svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.phone-page .phone-controls button:active,
+.phone-page .phone-controls button[aria-pressed='true'] {
+  background: #ffffff26;
+}
+.phone-page .phone-controls button:disabled {
+  opacity: 0.45;
+}
+.phone-page .phone-controls .phone-stop {
+  color: #ff8a80;
+}
+.phone-live .snackbar {
+  bottom: calc(100px + env(safe-area-inset-bottom));
+}
+@media (orientation: landscape) {
+  .phone-stage {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .phone-controls {
+    flex-direction: column;
+    justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom)) 10px;
+  }
+  .phone-page .phone-controls button {
+    flex: 0 1 68px;
+    min-height: 56px;
+  }
+  .phone-live .snackbar {
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: calc(50% - 48px);
+    max-width: calc(100vw - 140px);
+  }
 }
 @media (max-width: 720px) {
   .pairing-panel {

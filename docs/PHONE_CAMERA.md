@@ -80,9 +80,28 @@ do not disable the firewall. The signaling port 3001 is never published by Compo
 1. On the computer choose **Uruchom AI Challenge**, then **Telefon** in the camera hub. A QR and a large six-character invitation code appear.
 2. On the phone scan the QR, or open the same HTTPS site, choose **Udostępnij kamerę** and enter the six-character code. The six boxes support paste, automatic advance and keyboard correction. Review the suggested device name and select **Dołącz do stanowiska**.
 3. Compare the six-digit code on both screens. Approve only the intended request on the computer.
-4. On the accepted phone press **Uruchom aparat** and allow camera permission.
-5. Check the desktop preview and select **Przejdź do AI Challenge**. Keep the phone page visible. Its central square and mirrored preview match desktop preprocessing.
+4. Once the computer approves it, the phone starts the camera by itself; allow camera permission.
+   **Uruchom aparat** remains as a fallback if the automatic start fails (e.g. permission denied).
+5. Check the desktop preview and select **Przejdź do AI Challenge**. Keep the phone page visible.
+   The phone switches to a plain full-screen viewfinder (no crop frame or hints) with a control bar:
+   **Zmień aparat**, **Odbij poziomo** (left-right), **Odbij pionowo** (upside down), **Pełny
+   ekran** and **Zatrzymaj**. Flips are applied on the phone and shown in its preview, so the
+   computer receives exactly what the phone shows; both flips together turn the image by 180° (a
+   phone mounted upside down). There is no 90° rotation: browsers already rotate camera frames with
+   the device. The desktop still applies its own central crop and mirror for the model. The setting
+   is remembered on that phone. No notice covers the viewfinder while streaming. **Pełny ekran**
+   enters fullscreen where the browser allows it (Android Chrome, iPad); browsers require a tap for
+   this, so the automatic camera start cannot do it. The browser's own fullscreen notice may
+   briefly cover the bar. iPhone Safari has no page fullscreen, so the button is hidden and the
+   layout fills the visible screen. The screen is kept awake while streaming where the Wake Lock API
+   is available.
 6. Collect examples, train, test, play and open the laboratory on the computer as usual.
+7. If the phone stops sending frames (locked screen, closed page, network drop), the computer shows
+   **Rozłączono urządzenie** with a spinner while the pairing can still resume, and closes it by
+   itself when frames return. **Połącz nowe urządzenie** starts a new pairing; **Użyj kamery
+   komputera** switches to the local camera. Without a live pairing the spinner is hidden. The same
+   screen (as **Rozłączono kamerę**, with **Spróbuj ponownie** and **Użyj telefonu**) replaces the old
+   inline error for a lost local camera, in every stage including the camera setup and laboratory.
 
 The phone prefers the rear camera, 1280x720 and 30 FPS, without audio. These are preferences;
 constraints fall back on unsupported devices. A sustained bandwidth/CPU limitation lowers the
@@ -211,7 +230,11 @@ docker compose -f docker-compose.network.yml exec signaling node -e "fetch('http
 ## Physical acceptance checklist (not replaced by automated tests)
 
 - [ ] Android Chrome and iPhone Safari: trusted HTTPS, QR, WSS, permission denial/retry and rear camera.
-- [ ] Portrait/landscape, crop/mirror consistency, safe-area, keyboard focus and screen-reader statuses.
+- [ ] Portrait/landscape viewfinder and control bar, flips reaching the desktop, fullscreen
+      (Android) and its absence (iPhone), screen stays awake, safe-area, keyboard focus and
+      screen-reader statuses.
+- [ ] Lock the phone while streaming: the computer shows the disconnection screen with a spinner
+      and closes it by itself after unlocking; **Połącz nowe urządzenie** re-pairs from it.
 - [ ] Switch front/rear camera repeatedly; stop releases the camera indicator.
 - [ ] Complete collect/train/test/game/lab with natural hands on each platform.
 - [ ] Test Wi-Fi off/on and screen lock: short interruptions attempt recovery; expired grace, reload and backend restart require

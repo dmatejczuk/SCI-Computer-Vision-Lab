@@ -12,6 +12,10 @@ test('role selection, typed code, approval, signaling recovery and replacement',
   await page.getByRole('button', { name: 'Telefon', exact: true }).click();
   const code = await page.getByLabel('Kod dołączenia', { exact: true }).textContent();
   expect(code).toMatch(/^[A-Z2-9]{6}$/);
+  // The manual address comes from the server's public origin, not from the desktop page URL.
+  await expect(
+    page.getByText('Otwórz https://192.0.2.10 i wybierz', { exact: false }),
+  ).toBeVisible();
   const context = await browser.newContext();
   await context.addInitScript(() => {
     const Original = window.WebSocket;
@@ -34,7 +38,10 @@ test('role selection, typed code, approval, signaling recovery and replacement',
     await phone.getByRole('button', { name: 'Dołącz do stanowiska' }).click();
     await expect(phone.locator('.pair-code')).toBeVisible();
     await page.getByRole('button', { name: 'Zatwierdź telefon' }).click();
-    await phone.getByRole('button', { name: 'Uruchom aparat', exact: true }).click();
+    // The camera starts by itself after approval.
+    await expect(phone.getByRole('toolbar', { name: 'Sterowanie kamerą' })).toBeVisible({
+      timeout: 30000,
+    });
     await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
     await expect(page.getByText('Diagnostyka połączenia', { exact: true })).toHaveCount(0);
     const initialTrack = await phone
@@ -79,9 +86,16 @@ test('role selection, typed code, approval, signaling recovery and replacement',
       .evaluate((v) =>
         ((v as HTMLVideoElement).srcObject as MediaStream).getTracks().forEach((t) => t.stop()),
       );
-    await expect(page.locator('.error:visible')).toHaveCount(1, { timeout: 6000 });
+    // A paired phone that stops sending frames gets a waiting screen with a spinner.
+    const lost = page.getByRole('alertdialog', { name: 'Rozłączono urządzenie' });
+    await expect(lost).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText('Utracono połączenie z kamerą')).toHaveCount(0);
+    await expect(lost).toContainText('Oczekiwanie na ponowne połączenie');
+    await expect(lost.locator('.camera-lost-spinner')).toBeVisible();
+    await expect(lost.getByRole('button', { name: 'Połącz nowe urządzenie' })).toBeVisible();
+    await page.screenshot({ path: 'test-results/phone-disconnected.png' });
     await phone.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-    await expect(page.locator('.error:visible')).toHaveCount(0, { timeout: 10000 });
+    await expect(lost).toHaveCount(0, { timeout: 10000 });
     await expect(page.getByRole('button', { name: 'Zbierz OPEN' })).toBeVisible();
     // Re-pairing remains available to the instructor.
     await page.keyboard.press('Control+Shift+D');
@@ -116,7 +130,10 @@ test('phone prediction resumes after camera suspension without re-pairing', asyn
     await phone.goto('/phone' + hash);
     await phone.getByRole('button', { name: 'Dołącz do stanowiska' }).click();
     await page.getByRole('button', { name: 'Zatwierdź telefon' }).click();
-    await phone.getByRole('button', { name: 'Uruchom aparat', exact: true }).click();
+    // The camera starts by itself after approval.
+    await expect(phone.getByRole('toolbar', { name: 'Sterowanie kamerą' })).toBeVisible({
+      timeout: 30000,
+    });
     await page.getByRole('button', { name: 'Przejdź do AI Challenge' }).click({ timeout: 60000 });
     await page.getByRole('button', { name: 'Zbierz OPEN' }).click();
     await page.getByRole('button', { name: 'Dalej: pięść' }).click();
@@ -129,9 +146,11 @@ test('phone prediction resumes after camera suspension without re-pairing', asyn
       .evaluate((v) =>
         ((v as HTMLVideoElement).srcObject as MediaStream).getTracks().forEach((t) => t.stop()),
       );
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByRole('alertdialog', { name: 'Rozłączono urządzenie' })).toBeVisible({
+      timeout: 6000,
+    });
     await phone.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-    await expect(page.getByRole('alert')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByRole('alertdialog')).toHaveCount(0, { timeout: 10000 });
     await expect(page.getByRole('heading', { name: 'Sprawdź swój model' })).toBeVisible();
     await expect(page.locator('.probability b').first()).not.toHaveText('0%');
     await page.getByRole('button', { name: 'Zagraj', exact: false }).click();

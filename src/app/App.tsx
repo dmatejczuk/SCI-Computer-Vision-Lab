@@ -1,4 +1,5 @@
 import { PairingPanel } from '../features/phone-camera/PairingPanel';
+import { CameraLost } from '../components/CameraLost';
 import { AppHeader } from '../components/layout/AppHeader';
 import { AppFooter } from '../components/layout/AppFooter';
 import { ExplanationView } from '../features/explanation/ExplanationView';
@@ -160,6 +161,14 @@ export function App() {
         </ol>
       </nav>
       {!hub && state.source === 'phone' && !phonePaired && <PairingPanel session={session} />}
+      {state.error === 'lost' && (
+        <CameraLost
+          session={session}
+          source={state.source}
+          waiting={state.source === 'phone' && !!phone.stats}
+          busy={state.busy}
+        />
+      )}
       <main
         className={`${hub ? 'camera-hub' : ''} ${stage === 'GAME' ? 'playing' : ''} ${stage === 'START' ? 'welcome' : ''} ${stage === 'EXPLAIN' ? 'explaining' : ''}`}
       >
@@ -307,7 +316,7 @@ export function App() {
             </button>
           </div>
           {hub && !choosing && state.source === 'phone' && <PairingPanel session={session} />}
-          {state.error && (
+          {state.error && state.error !== 'lost' && (
             <div className="error" role="alert">
               <p>{pl.errors[state.error]}</p>
               <button disabled={busy} onClick={() => void session.retry()}>
@@ -347,12 +356,15 @@ export function App() {
             {title}
           </h1>
           {state.error ? (
-            <div className="error" role="alert">
-              <p>{pl.errors[state.error]}</p>
-              <button disabled={busy} onClick={() => void session.retry()}>
-                {pl.retry}
-              </button>
-            </div>
+            // A lost camera is handled by the CameraLost overlay; actions stay hidden meanwhile.
+            state.error !== 'lost' && (
+              <div className="error" role="alert">
+                <p>{pl.errors[state.error]}</p>
+                <button disabled={busy} onClick={() => void session.retry()}>
+                  {pl.retry}
+                </button>
+              </div>
+            )
           ) : (
             <>
               {stage === 'START' && (
@@ -536,7 +548,7 @@ export function App() {
                 </div>
               )}
             </div>
-            {state.error && (
+            {state.error && state.error !== 'lost' && (
               <div className="error" role="alert">
                 <p>{pl.errors[state.error]}</p>
                 <button disabled={busy} onClick={() => void session.retry()}>

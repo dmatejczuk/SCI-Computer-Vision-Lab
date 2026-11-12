@@ -64,7 +64,8 @@ export function PairingPanel({ session }: { session: SessionManager }) {
           <div className="manual-invite">
             <span>Wpisz kod na telefonie</span>
             <strong aria-label="Kod dołączenia">{state.code}</strong>
-            <small>Otwórz {location.origin} i wybierz „Udostępnij kamerę”.</small>
+            {/* The server's public origin (from the deployment), the same one encoded in the QR. */}
+            <small>Otwórz {new URL(state.link).origin} i wybierz „Udostępnij kamerę”.</small>
           </div>
           {qr && <img src={qr} width={256} height={256} alt="Kod QR zaproszenia telefonu" />}
           <div className="pairing-instructions">

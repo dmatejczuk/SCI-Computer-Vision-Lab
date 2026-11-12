@@ -87,7 +87,7 @@ export class RemoteCameraSource implements VideoSource {
         const link = new URL('/phone', origin);
         link.hash = new URLSearchParams({ room: m.room!, invite: m.invite! }).toString();
         this.patch({
-          status: `${m.name}: zeskanuj kod telefonem. Zaproszenie jest jednorazowe.`,
+          status: 'Zeskanuj kod telefonem. Zaproszenie jest jednorazowe.',
           link: link.href,
           code: m.code ?? '',
           expires: m.expires!,

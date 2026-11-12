@@ -179,10 +179,13 @@ test('camera loss can be recovered without losing captured data', async ({ page 
     track.stop();
     track.dispatchEvent(new Event('ended'));
   });
-  await expect(page.getByRole('alert')).toContainText('Utracono połączenie z kamerą');
+  // A lost camera opens the disconnection screen instead of an inline error.
+  const lost = page.getByRole('alertdialog', { name: 'Rozłączono kamerę' });
+  await expect(lost).toBeVisible();
+  await expect(page.getByText('Utracono połączenie z kamerą')).toHaveCount(0);
   await expect(page.locator('.live-label')).toHaveText('Brak');
-  await page.getByRole('button', { name: 'Spróbuj ponownie' }).click();
-  await expect(page.getByRole('alert')).toHaveCount(0);
+  await lost.getByRole('button', { name: 'Spróbuj ponownie' }).click();
+  await expect(lost).toHaveCount(0);
   await expect(page.locator('.live-label')).toContainText('NA ŻYWO');
   await expect(page.locator('.sample-counts b').first()).toHaveText('30');
   await reset(page);
