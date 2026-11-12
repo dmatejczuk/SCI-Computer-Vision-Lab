@@ -1,5 +1,23 @@
 /** Polish UI copy for the plate reader module (part 1 of the workshop). */
 export const plates = {
+  parts: {
+    label: 'Część warsztatu',
+    first: 'Część 1',
+    second: 'Część 2',
+    platesTitle: 'Czytnik tablic',
+    platesShort: 'Czytnik tablic',
+    gesturesShort: 'AI Challenge',
+  },
+  title: 'Czytnik tablic rejestracyjnych',
+  loadingModule: 'Ładowanie czytnika tablic…',
+  loadingVision: 'Uruchamiamy narzędzia do obróbki obrazu…',
+  visionFailed: 'Nie udało się uruchomić obróbki obrazu. Odśwież stronę albo poproś prowadzącego.',
+  freeze: 'Zatrzymaj klatkę',
+  unfreeze: 'Wróć do obrazu na żywo',
+  frozenBadge: 'Zatrzymana klatka',
+  cameraLabel: 'Kamera (bez odbicia lustrzanego)',
+  workerImage: 'Obraz w czytniku',
+  fpsUnit: 'kl./s',
   perf: {
     title: 'Test wydajności czytnika tablic',
     open: 'Test wydajności czytnika tablic',

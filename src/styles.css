@@ -2331,6 +2331,39 @@ canvas {
 .hub-next button {
   width: 100%;
 }
+.hub-parts {
+  display: grid;
+  gap: 0;
+}
+.hub-part strong {
+  display: block;
+  text-align: left;
+  font-weight: 650;
+}
+.hub-part small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 2px;
+}
+.part-switcher {
+  display: flex;
+  gap: 8px;
+  padding: 10px 0;
+  flex-wrap: wrap;
+}
+.part-switcher button {
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
+.part-switcher button[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
 .hub-controls .pairing-panel {
   margin: 16px 0;
   padding: 18px;

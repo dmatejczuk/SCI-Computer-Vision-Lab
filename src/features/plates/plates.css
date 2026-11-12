@@ -1,0 +1,95 @@
+/* Plate reader module (part 1). Loaded with the lazy plates chunk. */
+main.plates {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 8px 0 18px;
+  min-height: 0;
+}
+main.plates[hidden] {
+  display: none;
+}
+.plates-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.plates-toolbar h1 {
+  margin: 4px 0 0;
+  font-size: 26px;
+  line-height: 1.2;
+}
+.plates-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.plates-actions button {
+  min-height: 42px;
+  padding: 8px 14px;
+}
+.plates-actions button[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-primary);
+}
+.plates-status {
+  color: var(--color-muted);
+}
+.plates-loading {
+  padding: 40px 0;
+  color: var(--color-muted);
+}
+.plates-stage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.plates-stage figure {
+  margin: 0;
+  position: relative;
+  background: #0d1715;
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 160px;
+}
+.plates-stage video,
+.plates-stage canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 62vh;
+  object-fit: contain;
+  /* The plate module never mirrors the camera image. */
+  transform: none;
+}
+.plates-stage figcaption {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #fff;
+  background: rgb(0 0 0 / 55%);
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.plates-frozen-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--color-accent);
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 3px;
+}
+@media (max-width: 900px) {
+  .plates-stage {
+    grid-template-columns: 1fr;
+  }
+}

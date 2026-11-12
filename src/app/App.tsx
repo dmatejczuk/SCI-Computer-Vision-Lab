@@ -3,30 +3,37 @@ import { CameraLost } from '../components/CameraLost';
 import { AppHeader } from '../components/layout/AppHeader';
 import { AppFooter } from '../components/layout/AppFooter';
 import { ExplanationView } from '../features/explanation/ExplanationView';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { SessionManager } from '../services/SessionManager';
 import { pl } from '../i18n/pl';
 import { config } from '../config/settings';
 import { HandSymbol } from '../components/HandSymbol';
 import { GameView } from '../features/game/GameView';
 import { InstructorPanel } from '../features/instructor/InstructorPanel';
+import { plates } from '../i18n/plates';
+// Part 1 (plate reader) is a separate chunk with OpenCV.js; it does not load TFJS or Phaser.
+const PlatesView = lazy(() =>
+  import('../features/plates/PlatesView').then((m) => ({ default: m.PlatesView })),
+);
 const session = new SessionManager();
+type Part = 'plates' | 'gestures';
 export function App() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const video = useRef<HTMLVideoElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [instructor, setInstructor] = useState(false);
-  const [entered, setEntered] = useState(false);
-  const hub = !entered && state.controlMode !== 'KEYBOARD';
+  const [part, setPart] = useState<Part | null>(null);
+  const hub = part === null && state.controlMode !== 'KEYBOARD';
+  const platesOpen = part === 'plates' && state.controlMode !== 'KEYBOARD';
   const choosing = state.stage === 'START' && !state.busy && !state.error;
   const phone = useSyncExternalStore(session.phone.subscribe, session.phone.getSnapshot);
   // A paired phone needs no source controls in the workshop; recovery uses the error retry.
   const phonePaired = state.source === 'phone' && !!phone.stats;
   useEffect(() => {
-    if (state.stage === 'START') setEntered(false);
+    if (state.stage === 'START') setPart(null);
   }, [state.stage]);
   const chooseCamera = async (source: 'local' | 'phone') => {
-    setEntered(false);
+    setPart(null);
     await session.selectSource(source);
     void session.start();
   };
@@ -146,7 +153,17 @@ export function App() {
           </button>
         </div>
       </AppHeader>
-      <nav hidden={hub} aria-label={pl.workshop}>
+      {!hub && (
+        <div className="part-switcher" role="group" aria-label={plates.parts.label}>
+          <button aria-pressed={platesOpen} onClick={() => setPart('plates')}>
+            {plates.parts.first}: {plates.parts.platesShort}
+          </button>
+          <button aria-pressed={!platesOpen} onClick={() => setPart('gestures')}>
+            {plates.parts.second}: {plates.parts.gesturesShort}
+          </button>
+        </div>
+      )}
+      <nav hidden={hub || platesOpen} aria-label={pl.workshop}>
         <ol className="steps">
           {pl.steps.map((label, index) => (
             <li
@@ -161,6 +178,11 @@ export function App() {
         </ol>
       </nav>
       {!hub && state.source === 'phone' && !phonePaired && <PairingPanel session={session} />}
+      {platesOpen && (
+        <Suspense fallback={<p className="plates-loading">{plates.loadingModule}</p>}>
+          <PlatesView session={session} />
+        </Suspense>
+      )}
       {state.error === 'lost' && (
         <CameraLost
           session={session}
@@ -170,6 +192,7 @@ export function App() {
         />
       )}
       <main
+        hidden={platesOpen}
         className={`${hub ? 'camera-hub' : ''} ${stage === 'GAME' ? 'playing' : ''} ${stage === 'START' ? 'welcome' : ''} ${stage === 'EXPLAIN' ? 'explaining' : ''}`}
       >
         <section
@@ -337,13 +360,30 @@ export function App() {
                   ? 'Zezwól przeglądarce na dostęp do kamery.'
                   : 'Połącz kamerę, aby przejść dalej.'}
             </p>
-            <button
-              className="primary"
-              disabled={busy || !!state.error || !state.cameraLabel || stage !== 'OPEN'}
-              onClick={() => setEntered(true)}
-            >
-              Przejdź do AI Challenge <span>→</span>
-            </button>
+            <div className="hub-parts" role="group" aria-label={plates.parts.label}>
+              <button
+                className="primary hub-part"
+                disabled={state.resetting || !!state.error || !state.cameraLabel}
+                onClick={() => setPart('plates')}
+              >
+                <strong>
+                  <small>{plates.parts.first}</small>
+                  {plates.parts.platesTitle}
+                </strong>
+                <span>→</span>
+              </button>
+              <button
+                className="secondary hub-part"
+                disabled={busy || !!state.error || !state.cameraLabel || stage !== 'OPEN'}
+                onClick={() => setPart('gestures')}
+              >
+                <strong>
+                  <small>{plates.parts.second}</small>
+                  Przejdź do AI Challenge
+                </strong>
+                <span>→</span>
+              </button>
+            </div>
           </div>
         </section>
         <section className="task-panel" hidden={hub || stage === 'EXPLAIN'}>

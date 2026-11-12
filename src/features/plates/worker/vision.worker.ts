@@ -1,12 +1,44 @@
 /// <reference lib="webworker" />
 import { loadOpenCv, type CV } from './cv';
 import { runBenchmark } from './benchmark';
-import { bitmapToImageData, testPattern } from './imageIO';
+import { bitmapToImageData, matToImageData, testPattern } from './imageIO';
 import { MatScope } from './scope';
-import type { FromWorker, ToWorker } from './protocol';
+import { resultBitmaps, type FromWorker, type ProcessResult, type ToWorker } from './protocol';
 
 declare const self: DedicatedWorkerGlobalScope;
 let cv: CV | null = null;
+/** The frozen frame lives only in this worker's memory and is dropped on unfreeze/reset. */
+let frozen: ImageData | null = null;
+
+async function process(
+  cv: CV,
+  message: Extract<ToWorker, { type: 'process' }>,
+): Promise<ProcessResult> {
+  const started = performance.now();
+  const image =
+    message.source.kind === 'camera' ? bitmapToImageData(message.source.bitmap) : frozen;
+  if (!image) throw new Error('No frozen frame');
+  const scope = new MatScope(cv);
+  try {
+    const input = scope.track(cv.matFromImageData(image));
+    let work = input;
+    const width = Math.min(message.options.workWidth, input.cols);
+    if (width !== input.cols) {
+      work = scope.mat();
+      const height = Math.round((input.rows * width) / input.cols);
+      cv.resize(input, work, new cv.Size(width, height), 0, 0, cv.INTER_AREA);
+    }
+    const source = await createImageBitmap(matToImageData(cv, scope, work));
+    return {
+      totalMs: performance.now() - started,
+      size: { width: work.cols, height: work.rows },
+      source,
+      liveMats: 0,
+    };
+  } finally {
+    scope.release();
+  }
+}
 
 function post(message: FromWorker, transfer: Transferable[] = []) {
   self.postMessage(message, transfer);
@@ -48,6 +80,16 @@ async function handle(message: ToWorker) {
     const readMs = performance.now() - begin;
     const result = await runBenchmark(cv, image, message.width, message.thumbnails);
     post({ type: 'benchmark', id: message.id, readMs, liveMats: MatScope.live, ...result });
+  } else if (message.type === 'process') {
+    const result = await process(cv, message);
+    result.liveMats = MatScope.live;
+    post({ type: 'processed', id: message.id, result }, resultBitmaps(result));
+  } else if (message.type === 'freeze') {
+    frozen = bitmapToImageData(message.bitmap);
+    post({ type: 'ok', id: message.id });
+  } else if (message.type === 'unfreeze' || message.type === 'reset') {
+    frozen = null;
+    post({ type: 'ok', id: message.id });
   }
 }
 
@@ -55,6 +97,8 @@ self.onmessage = (event: MessageEvent<ToWorker>) => {
   const message = event.data;
   handle(message).catch((error) => {
     if ('bitmap' in message) message.bitmap?.close();
+    if (message.type === 'process' && message.source.kind === 'camera')
+      message.source.bitmap.close();
     post({ type: 'error', id: message.id, ...describe(error) });
   });
 };
