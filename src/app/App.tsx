@@ -299,7 +299,7 @@ export function App() {
                 : 'Sprawdź swój podgląd'}
           </h1>
           <p className="lead" hidden={!choosing}>
-            Pokaż dłoń, naucz AI i zagraj. Zacznij od połączenia kamery.
+            Zacznij od połączenia kamery.
           </p>
           <div
             hidden={!choosing}

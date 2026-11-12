@@ -7,6 +7,10 @@ export interface EditorActions {
   plates: PlateSession;
   setParam(node: string, param: string, value: number): void;
   remove(node: string): void;
+  /** Takes the block out of its wires and leaves it on the canvas. */
+  unplug(node: string): void;
+  /** Removes one wire. */
+  cutWire(edge: string): void;
   preview(node: string): void;
   /** Extra content for the Output block (character counter). */
   outputStatus?: React.ReactNode;

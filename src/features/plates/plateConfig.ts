@@ -8,6 +8,8 @@ export interface PlateConfig {
   style: 'printed' | 'tiles';
   /** Characters printed on tiles; recognition only considers these. */
   charset: string;
+  /** How many characters a plate may have (7–8 on generated plates). */
+  characters: { min: number; max: number };
   /** Number of tile slots in the plate frame. */
   slots: number;
   /** Plate geometry in any unit: tile size, gap between tiles, frame border, letter height. */

@@ -1,4 +1,4 @@
-/** Polish UI copy for the plate generator (facilitator mode). */
+/** Polish UI copy for the plate generator (/?role=plate-generator). */
 export const generator = {
   title: 'Generator tablic',
   back: '← Strona główna',

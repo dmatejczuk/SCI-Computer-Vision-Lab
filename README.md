@@ -1,7 +1,7 @@
-# AI Vision Challenge
+# SCI Computer Vision Lab
 
 Teach a model to recognize gestures, use it to control a game, and explore how it makes decisions.
-AI Vision Challenge is an interactive workshop that takes participants from webcam examples
+SCI Computer Vision Lab is an interactive workshop that takes participants from webcam examples
 to their own image classifier – without writing code.
 
 Participants collect open-hand and closed-fist examples, train a model, and put it to the test
@@ -12,8 +12,8 @@ better examples, retrain, and compare the results.
 ## Features
 
 - **Plate reader (part 1)** – build an OpenCV image-processing chain in a node editor until only
-  the characters are left, then watch the reader read your own tile plate (three levels).
-
+  the characters are left, then watch the reader read your own printed plate (three levels).
+- **Plate generator** – `/?role=plate-generator` prints EU-style SCI plates as a PDF.
 - **Phone camera** – pair a phone over HTTPS/WebRTC; the computer still runs all ML and gameplay.
 - **Guided workshop** – collect OPEN/FIST examples, train a classifier, and test predictions live.
 - **Gesture-controlled game** – an open hand arms the next jump; closing the fist triggers it.
@@ -33,7 +33,7 @@ v2, and a free TCP port 80. From the repository directory:
 docker compose up -d --build
 ```
 
-Open [http://localhost](http://localhost) on the Docker host, choose **Uruchom AI Challenge**, then **Kamera komputera**, and allow camera
+Open [http://localhost](http://localhost) on the Docker host, choose **Uruchom stanowisko**, then **Kamera komputera**, and allow camera
 access. Check the preview, then select **Część 1: Czytnik tablic** (plate reader) or
 **Część 2: Przejdź do AI Challenge**. No hosts-file edits, certificates, TLS warnings, `.env` file or environment variables are
 needed. Browsers treat HTTP localhost as a secure context, so webcam access is available with

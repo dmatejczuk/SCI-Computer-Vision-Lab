@@ -5,7 +5,7 @@ export const pl = {
   dataToAi: 'DANE → AI',
   testGame: 'Test gry bez kamery',
   keyboardTest: 'Test prowadzącego: SPACJA = SKOK',
-  brand: 'AI Vision Challenge',
+  brand: 'Computer Vision Lab',
   sciWebsite: 'Otwórz stronę SCI',
   authorWebsite: 'DM – strona autora',
   school: 'TECHNIKUM INFORMATYCZNE SCI',

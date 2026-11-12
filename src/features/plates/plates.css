@@ -210,6 +210,7 @@ main.plates > .error {
   font-size: 13px;
   line-height: 1.2;
 }
+.block-unplug,
 .block-delete {
   min-height: 0;
   width: 24px;
@@ -220,6 +221,30 @@ main.plates > .error {
   font-size: 18px;
   line-height: 1;
   color: var(--color-muted);
+}
+.block-unplug {
+  margin-left: auto;
+  font-size: 13px;
+}
+.block-unplug + .block-delete {
+  margin-left: 0;
+}
+.block-unplug:hover,
+.block-delete:hover {
+  color: var(--color-text);
+}
+.wire-cut {
+  position: absolute;
+  pointer-events: all;
+  min-height: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 15px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 .block-inputs {
   display: flex;
@@ -546,22 +571,32 @@ main.plates > .error {
 .launch-reader:hover:not(:disabled) {
   background: var(--color-success) !important;
 }
+/* All characters found: the reader is worth a look now. */
+.launch-reader.ready {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 3px rgb(60 160 90 / 25%);
+}
 .reader {
   flex: 1;
   display: grid;
+  padding: 16px 16px 150px;
+  overflow-y: auto;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
   grid-template-areas:
     'images result'
     'details result';
+  grid-template-rows: auto 1fr;
   gap: 16px 22px;
   align-content: start;
-  padding-bottom: 150px;
 }
 .reader-images {
   grid-area: images;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  align-items: start;
+  align-self: start;
 }
 .reader-images figure {
   margin: 0;
@@ -588,36 +623,119 @@ main.plates > .error {
   margin: 0 0 10px;
   font-size: 18px;
 }
-.plate-tiles {
+.reader-plate {
+  display: grid;
+  gap: 10px;
+}
+.reader-plate-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 3px 8px rgb(0 0 0 / 18%));
+}
+.status-empty .reader-plate-svg {
+  opacity: 0.35;
+}
+.reader-status {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  background: var(--color-soft);
+  color: var(--color-text);
+}
+.status-incomplete .reader-status,
+.status-checking .reader-status {
+  background: #fff6dc;
+  color: #7a5a00;
+}
+.status-read .reader-status {
+  background: #dff3e6;
+  color: var(--color-success);
+  font-size: 18px;
+}
+.reader-chars {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.reader-chars li {
+  display: grid;
+  justify-items: center;
+  min-width: 42px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: help;
+}
+.reader-chars strong {
+  font-family: 'Plate', 'Arial Narrow', sans-serif;
+  font-size: 26px;
+  line-height: 1.1;
+}
+.reader-chars span {
+  font-size: 11px;
+  font-weight: 700;
+}
+.reader-chars .sure {
+  background: #dff3e6;
+  color: #1d6b3b;
+}
+.reader-chars .unsure {
+  background: #fff3cf;
+  color: #7a5a00;
+}
+.reader-chars .doubtful {
+  background: #ffe2dc;
+  color: #7d2418;
+}
+.reader-chars .wrong,
+.reader-chars .extra {
+  border-color: var(--color-danger);
+}
+.reader-collected {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+}
+.reader-collected h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.reader-collected h3 span {
+  min-width: 24px;
+  padding: 1px 8px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 12px;
+  text-align: center;
+}
+.reader-collected ol {
   list-style: none;
   margin: 0;
-  padding: 10px;
+  padding: 0;
   display: flex;
-  gap: 5px;
   flex-wrap: wrap;
-  background: #26302d;
-  border-radius: 8px;
+  gap: 8px 12px;
 }
-.plate-tile {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 62px;
-  background: #f3f3ee;
-  border-radius: 3px;
-  font-family: 'Plate', 'Arial Narrow', sans-serif;
+.reader-collected li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
   font-weight: 700;
-  font-size: 40px;
-  color: #151a18;
-  border: 3px solid transparent;
+  color: var(--color-muted);
 }
-.plate-tile.ok {
-  border-color: #3cb36a;
-}
-.plate-tile.wrong,
-.plate-tile.extra {
-  border-color: var(--color-danger);
-  background: #ffe2dc;
+.reader-collected li.current .mini-plate {
+  box-shadow: 0 0 0 3px #3cb36a;
 }
 .reader-empty {
   color: var(--color-muted);
@@ -819,6 +937,12 @@ main.plates > .error {
   background: #dff3e6;
   border-radius: 6px;
   color: var(--color-success);
+}
+.level-next {
+  justify-self: start;
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 13px;
 }
 .primary-small {
   min-height: 34px;

@@ -111,7 +111,7 @@ describe('levels in the plate session', () => {
     const session = new SessionManager();
     const plates = new PlateSession(session);
     expect(plates.getSnapshot().sample?.text).toBe('KOT2026');
-    expect(plates.getSnapshot().expected).toBe(7);
+    expect(plates.getSnapshot().expected).toEqual({ min: 7, max: 7 });
     const solved = chainGraph(['grayscale', 'threshold', 'invert']);
     plates.apply(solved);
     plates.setLevel(2);
@@ -120,10 +120,12 @@ describe('levels in the plate session', () => {
     expect(plates.getSnapshot().canUndo).toBe(false);
     plates.setPractice(true);
     expect(plates.getSnapshot().sample?.text).toBe('WX4821');
-    expect(plates.getSnapshot().expected).toBe(6);
+    expect(plates.getSnapshot().expected).toEqual({ min: 6, max: 6 });
     plates.setPractice(false);
+    // An unknown camera plate may have 7 or 8 characters; a typed plate fixes the count.
+    expect(plates.getSnapshot().expected).toEqual({ min: 7, max: 8 });
     plates.setMyPlate('ab 12');
-    expect(plates.getSnapshot().expected).toBe(4);
+    expect(plates.getSnapshot().expected).toEqual({ min: 4, max: 4 });
     plates.showHint();
     expect(plates.getSnapshot().hintsShown).toBe(1);
     plates.setLevel(1);

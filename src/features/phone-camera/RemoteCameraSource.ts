@@ -2,7 +2,11 @@ import { deviceName } from './deviceName';
 import type { VideoSource } from '../camera/VideoSource';
 import type { ServerEvent } from '../../../shared/signaling';
 import { SignalingClient } from './SignalingClient';
-import { PeerConnectionController, type ConnectionStats } from './PeerConnectionController';
+import {
+  PeerConnectionController,
+  type ConnectionStats,
+  type PlateFeed,
+} from './PeerConnectionController';
 export type PairingState = {
   status: string;
   code: string;
@@ -24,6 +28,8 @@ export class RemoteCameraSource implements VideoSource {
   private cancel?: () => void;
   private ready?: () => void;
   private listeners = new Set<() => void>();
+  /** The latest plate collection, re-sent whenever the data channel (re)opens. */
+  private plates: PlateFeed = { type: 'plates', plates: [] };
   private state: PairingState = {
     code: '',
     status: 'Wybierz telefon i rozpocznij parowanie.',
@@ -134,6 +140,8 @@ export class RemoteCameraSource implements VideoSource {
           },
           lost,
         );
+        // The phone shows the plates read so far as soon as the channel opens.
+        this.peer.channel.onopen = () => this.sendPlates(this.plates);
         this.timer = setInterval(() => {
           const peer = this.peer;
           if (peer)
@@ -184,6 +192,16 @@ export class RemoteCameraSource implements VideoSource {
     });
     this.peer?.stop();
     this.peer = undefined;
+  }
+  /** Shows plates read on the computer on the paired phone (if one is connected). */
+  publishPlates(feed: Omit<PlateFeed, 'type'>) {
+    // Only the newest plate is announced; a later re-send carries the collection alone.
+    this.plates = { type: 'plates', plates: feed.plates };
+    this.sendPlates({ type: 'plates', ...feed });
+  }
+  private sendPlates(feed: PlateFeed) {
+    const channel = this.peer?.channel;
+    if (channel?.readyState === 'open') channel.send(JSON.stringify(feed));
   }
   markRecovered() {
     this.patch({ status: 'Przywrócono obraz telefonu.' });

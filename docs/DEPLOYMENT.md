@@ -30,7 +30,7 @@ TLS exception is required. The default Caddy configuration serves HTTP explicitl
 redirect to a hostname or HTTPS. Compose publishes port 80 only on `127.0.0.1`.
 
 Modern browsers consider HTTP localhost a potentially trustworthy origin, allowing camera access
-with permission. Choose **Uruchom AI Challenge**, then **Kamera komputera** and grant camera access. OS privacy settings and browser or
+with permission. Choose **Uruchom stanowisko**, then **Kamera komputera** and grant camera access. OS privacy settings and browser or
 enterprise policies still apply. A remote Docker context means localhost is not the deployment
 host; use the network mode instead.
 

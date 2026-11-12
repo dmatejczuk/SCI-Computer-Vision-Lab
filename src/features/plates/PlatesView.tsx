@@ -84,9 +84,7 @@ export function PlatesView({
           )}
           {state.view === 'editor' && (
             <button
-              className="launch-reader"
-              disabled={!plates.canRead}
-              title={plates.canRead ? undefined : text.reader.launchHint}
+              className={`launch-reader ${plates.complete ? 'ready' : ''}`}
               onClick={() => plates.setView('reader')}
             >
               {text.reader.launch} →

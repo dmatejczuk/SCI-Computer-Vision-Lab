@@ -81,6 +81,18 @@ test('node editor inserts blocks, explains wrong ones and undoes changes', async
   await expect(page.locator('.block-card')).toHaveCount(4);
   await page.keyboard.press('Control+y');
   await expect(page.locator('.block-card')).toHaveCount(5);
+  // Unplug the invert block: it stays on the canvas, out of the chain; undo plugs it back.
+  await page.getByRole('button', { name: 'Odepnij blok: Odwróć kolory' }).click();
+  await expect(page.locator('.block-card')).toHaveCount(5);
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(3);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(4);
+  // A clicked wire offers scissors.
+  await page.locator('[data-testid^="rf__edge-"]').last().click();
+  await page.getByRole('button', { name: 'Przetnij linię' }).click();
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(3);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(4);
   // Delete the threshold block: the chain stays connected (now with a red wire).
   await page.locator('.block-card[data-block="threshold"] .block-delete').click();
   await expect(page.locator('.block-card')).toHaveCount(4);
@@ -100,17 +112,23 @@ test('hub → plate reader → level 1 → launching the reader', async ({ page 
     'aria-selected',
     'true',
   );
+  // The reader is always reachable; it lights up once the plate is complete.
   const launch = page.getByRole('button', { name: /Uruchom czytnik tablic/ });
-  await expect(launch).toBeDisabled();
+  await expect(launch).toBeEnabled();
+  await expect(launch).not.toHaveClass(/ready/);
   await page.getByRole('button', { name: /Podpowiedź/ }).click();
   await expect(page.locator('.level-hints li')).toHaveCount(1);
   for (const name of ['Odcienie szarości', 'Progowanie', 'Odwróć kolory'])
     await page.locator('.palette-item', { hasText: name }).first().click();
   await expect(page.getByText('Znaleziono 7 / 7 znaków')).toBeVisible({ timeout: 30000 });
   await expect(page.getByText('Poziom zaliczony!')).toBeVisible();
+  await expect(launch).toHaveClass(/ready/);
   await launch.click();
-  await expect(page.getByRole('list', { name: 'Odczytany tekst: KOT2026' })).toBeVisible();
-  await expect(page.locator('.reader-details td', { hasText: /\d+%/ }).first()).toBeVisible();
+  // The reading is drawn as a printed plate, with how sure the reader is of each character.
+  await expect(page.getByRole('img', { name: 'Odczytany tekst: KOT2026' })).toBeVisible();
+  await expect(page.getByText('✓ Odczytano tablicę')).toBeVisible();
+  await expect(page.locator('.reader-chars li')).toHaveCount(7);
+  await expect(page.locator('.reader-chars li').first()).toContainText('%');
   await page.getByLabel('Moja tablica').fill('KOT2026');
   await expect(page.getByText('Brawo!')).toBeVisible();
   await page.getByRole('button', { name: '← Wróć do edytora' }).click();

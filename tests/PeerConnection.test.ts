@@ -11,6 +11,9 @@ it('queues early ICE until the answer and ignores stale generations / events aft
     addTrack() {
       return { getParameters: () => ({ encodings: [] }) };
     }
+    createDataChannel() {
+      return {};
+    }
     async createOffer() {
       return { type: 'offer', sdp: 'offer' };
     }
@@ -62,6 +65,9 @@ it('waits out brief disconnects and gives every incident a fresh recovery budget
   class Peer {
     connectionState = 'new';
     onconnectionstatechange: (() => void) | null = null;
+    createDataChannel() {
+      return {};
+    }
     close() {}
   }
   vi.stubGlobal('RTCPeerConnection', Peer);

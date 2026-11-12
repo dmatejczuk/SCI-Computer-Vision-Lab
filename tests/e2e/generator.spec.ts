@@ -1,15 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-test('facilitator mode generates plates, edits them and downloads a print PDF', async ({
+test('the plate generator page generates plates, edits them and downloads a print PDF', async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  // The generator has its own address and is not linked from the first screen.
   await page.goto('/');
-  // The generator is a facilitator tool, linked at the bottom of the first screen.
-  await page.getByRole('link', { name: 'Tryb prowadzącego' }).click();
-  await expect(page).toHaveURL(/role=instructor/);
+  await expect(page.getByRole('link', { name: /prowadzącego|generator/i })).toHaveCount(0);
+  await page.goto('/?role=plate-generator');
   await expect(page.getByRole('heading', { name: 'Generator tablic' })).toBeVisible();
   const plates = page.getByRole('img', { name: /^Tablica \d+:/ });
   await expect(plates).toHaveCount(10, { timeout: 30000 });

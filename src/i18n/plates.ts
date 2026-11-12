@@ -138,7 +138,7 @@ export const plates = {
   editor: {
     palette: 'Bloki',
     paletteHint:
-      'Kliknij blok, aby wstawić go przed „Wynik”. Możesz też przeciągnąć go na linię między blokami.',
+      'Kliknij blok, aby wstawić go przed „Wynik”, albo przeciągnij go na linię. ⏏ na bloku odepnie go od linii, a kliknięta linia ma ✂ do przecięcia.',
     categories: {
       image: 'Obraz',
       binary: 'Czarno-białe',
@@ -149,6 +149,9 @@ export const plates = {
     redo: 'Ponów',
     clear: 'Wyczyść',
     remove: 'Usuń blok',
+    unplug: 'Odepnij blok',
+    unplugHint: 'Odepnij od linii (blok zostaje na planszy)',
+    cutWire: 'Przetnij linię',
     enlarge: 'Powiększ (dwuklik)',
     thumbnail: 'Miniatura',
     preview: 'Podgląd',
@@ -164,16 +167,30 @@ export const plates = {
     copied: 'Skopiowano',
   },
   reader: {
-    found: (found: number, expected: number) => `Znaleziono ${found} / ${expected} znaków`,
+    found: (found: number, expected: { min: number; max: number }) =>
+      expected.min === expected.max
+        ? `Znaleziono ${found} / ${expected.min} znaków`
+        : `Znaleziono ${found} ${characters(found)} · tablica ma ${expected.min}–${expected.max}`,
     readText: 'Odczytany tekst',
     launch: 'Uruchom czytnik tablic',
-    launchHint: 'Przycisk włączy się, gdy „Wynik” znajdzie tyle znaków, ile ma tablica.',
     back: '← Wróć do edytora',
     title: 'Czytnik tablic',
     before: 'Przed: obraz z kamery',
     after: 'Po: obraz z bloku „Wynik”',
     result: 'Odczytana tablica',
     nothing: 'Czytnik nie widzi jeszcze żadnych znaków.',
+    statusEmpty:
+      'Czytnik nie widzi znaków. Wróć do edytora i zostaw na obrazie białe znaki na czarnym tle.',
+    statusIncomplete: (found: number, expected: string) =>
+      `Widzę ${found} ${characters(found)}, a tablica ma ${expected}. Popraw bloki w edytorze.`,
+    statusChecking: 'Sprawdzam… Trzymaj tablicę nieruchomo.',
+    statusMismatch: 'Wszystkie znaki są, ale nie zgadzają się z tablicą. Porównaj je poniżej.',
+    statusRead: '✓ Odczytano tablicę',
+    certaintyLabel: 'Pewność każdego znaku',
+    certaintyHint: (threshold: number) =>
+      `Zielony znak: czytnik jest pewny (co najmniej ${threshold}% podobieństwa do wzoru). Najedź na znak, by zobaczyć, z czym go myli.`,
+    collected: 'Odczytane tablice',
+    collectedEmpty: 'Tu pojawi się każda tablica, którą czytnik odczyta na pewno.',
     myPlate: 'Moja tablica',
     myPlateHint: 'Wpisz znaki, które ułożyłeś na tablicy.',
     allOk: 'Brawo! Czytnik odczytał całą tablicę poprawnie.',
@@ -187,7 +204,6 @@ export const plates = {
     character: 'Znak',
     confidence: 'Podobieństwo',
     alternatives: 'Następne w kolejce',
-    stable: 'Wynik uśredniony z kilku ostatnich klatek, żeby nie migał.',
   },
   levels: {
     label: 'Poziom',
@@ -230,7 +246,7 @@ export const plates = {
     practice: 'Obraz ćwiczebny',
     sampleSource: 'Wbudowane zdjęcie tablicy',
     done: 'Poziom zaliczony! Czytnik odczytał całą tablicę.',
-    next: 'Następny poziom →',
+    goTo: (level: number) => `Przejdź do poziomu ${level}`,
     source: 'Źródło obrazu',
   },
   instructor: {
@@ -297,3 +313,11 @@ export const plates = {
     note: 'Wynik orientacyjny. Zmierz go na każdym komputerze w sali przy włączonej kamerze.',
   },
 };
+
+/** "znak", "znaki" or "znaków" for a count (Polish plural). */
+function characters(count: number) {
+  if (count === 1) return 'znak';
+  const tens = count % 100;
+  const units = count % 10;
+  return units >= 2 && units <= 4 && (tens < 12 || tens > 14) ? 'znaki' : 'znaków';
+}

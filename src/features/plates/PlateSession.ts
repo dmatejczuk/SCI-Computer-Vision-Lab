@@ -10,8 +10,9 @@ import { connect, createNode } from './graph/graph';
 import type { BlockType, Graph } from './graph/types';
 import { levelById, type LevelId } from './levels';
 import { plateConfig } from './plateConfig';
-import { cleanPlate } from './recognition/compare';
+import { cleanPlate, formatPlate } from './recognition/compare';
 import type { PlateSceneOptions } from './recognition/plateImage';
+import { collect, Confirmer, type CollectedPlate } from './recognition/confirm';
 import { Voter, type VotedCharacter } from './recognition/recognize';
 import {
   resultBitmaps,
@@ -71,8 +72,12 @@ export interface PlateState {
   sample: { text: string; scene: PlateSceneOptions } | null;
   /** Characters read from the Output block, stabilised over recent frames. */
   reading: VotedCharacter[];
-  /** How many characters a correct result should have. */
-  expected: number;
+  /** The plate confirmed as read and still in view (camera only), or null. */
+  confirmed: string | null;
+  /** Plates confirmed during this group's session, newest first. */
+  collected: CollectedPlate[];
+  /** How many characters a full reading may have (one number when the plate is known). */
+  expected: { min: number; max: number };
   workWidth: number;
   fps: number;
   passMs: number;
@@ -99,12 +104,16 @@ const initial = (): PlateState => ({
   orientation: UPRIGHT,
   sample: levelById(1).sample,
   reading: [],
-  expected: levelById(1).sample!.text.length,
+  confirmed: null,
+  collected: [],
+  expected: exactly(levelById(1).sample!.text.length),
   workWidth: FULL_WIDTH,
   fps: 0,
   passMs: 0,
   liveMats: 0,
 });
+
+const exactly = (count: number) => ({ min: count, max: count });
 
 /** Chooses the working width from recent pass durations, with hysteresis. */
 export function adaptWidth(current: number, recentMs: number[]): number {
@@ -271,10 +280,14 @@ export class PlateSession {
     this.invalidate();
   }
 
-  /** Characters a full reading should have: the built-in plate, the typed plate or the slots. */
+  /**
+   * Characters a full reading may have: exactly the built-in plate or the typed plate, or
+   * otherwise any plate length (7–8 on generated plates).
+   */
   private expectedCount() {
     const typed = cleanPlate(this.state.myPlate);
-    return this.state.sample?.text.length ?? (typed.length || plateConfig.slots);
+    const known = this.state.sample?.text.replace(/\s/g, '').length ?? typed.length;
+    return known ? exactly(known) : { ...plateConfig.characters };
   }
 
   private levelGraphs = new Map<LevelId, Graph>();
@@ -451,6 +464,34 @@ export class PlateSession {
     const text = reading.map((c) => c.char).join('');
     if (target && text === target && !this.state.completed.includes(this.state.level))
       this.patch({ completed: [...this.state.completed, this.state.level] });
+    this.confirm(reading);
+  }
+
+  private confirmer = new Confirmer();
+
+  /**
+   * Camera readings only (built-in images are not real plates): a complete, clear reading that
+   * stays the same for a moment counts as "plate read" and joins the collection.
+   */
+  private confirm(reading: VotedCharacter[]) {
+    if (this.state.sample) {
+      this.confirmer.clear();
+      if (this.state.confirmed) this.patch({ confirmed: null });
+      return;
+    }
+    const text = this.confirmer.push(reading, this.state.expected);
+    if (text) {
+      this.patch({ confirmed: text, collected: collect(this.state.collected, text) });
+      this.publishPlates(text);
+    } else if (!this.confirmer.current && this.state.confirmed) this.patch({ confirmed: null });
+  }
+
+  /** Sends the collection to a paired phone, which shows each newly read plate. */
+  private publishPlates(latest?: string) {
+    this.session.phone.publishPlates({
+      latest: latest ? formatPlate(latest) : undefined,
+      plates: this.state.collected.map((item) => ({ ...item, text: formatPlate(item.text) })),
+    });
   }
 
   setView(view: PlateState['view']) {
@@ -464,10 +505,10 @@ export class PlateSession {
     this.patch({ expected: this.expectedCount() });
   }
 
-  /** The reader makes sense once the Output block finds a plausible number of characters. */
-  get canRead() {
+  /** The Output block finds as many characters as a plate has: the reading looks complete. */
+  get complete() {
     const found = this.state.reading.length;
-    return found >= Math.max(1, this.state.expected - 2) && found <= this.state.expected + 1;
+    return found >= this.state.expected.min && found <= this.state.expected.max;
   }
 
   /** The text read from the current Output image. */
@@ -506,12 +547,14 @@ export class PlateSession {
     this.past = [];
     this.future = [];
     this.voter.clear();
+    this.confirmer.clear();
     this.levelGraphs.clear();
     this.lastChange = null;
     this.dirty = true;
     this.state = { ...initial(), orientation: this.state.orientation };
     this.startGraph = this.state.graph;
     this.listeners.forEach((listener) => listener());
+    this.publishPlates();
   }
 }
 

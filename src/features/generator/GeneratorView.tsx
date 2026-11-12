@@ -1,9 +1,9 @@
-import opentype from 'opentype.js';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { generator as t } from '../../i18n/generator';
 import { plateConfig } from '../plates/plateConfig';
 import { buildPdf } from './pdf';
-import { cleanPlateText, MAX_CHARACTERS, svgPath, type Drawing } from './plateDesign';
+import { DrawingSvg, usePlateFont } from './PlateArt';
+import { cleanPlateText, MAX_CHARACTERS } from './plateDesign';
 import { randomPlate, randomPlates } from './randomPlate';
 import {
   drawPiece,
@@ -25,61 +25,6 @@ let nextId = 1;
 const entries = (texts: string[]): PlateEntry[] => texts.map((text) => ({ id: nextId++, text }));
 const charset = plateConfig.charset;
 const characterCount = (text: string) => text.replace(/\s/g, '').length;
-
-/** Loads the plate font once (the same font the reader's templates use). */
-function usePlateFont() {
-  const [font, setFont] = useState<opentype.Font | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(plateConfig.font.file)
-      .then((response) => {
-        if (!response.ok) throw new Error(`${response.status}`);
-        return response.arrayBuffer();
-      })
-      .then((buffer) => !cancelled && setFont(opentype.parse(buffer)))
-      .catch((error) => {
-        console.error('[generator] font', error);
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return { font, failed };
-}
-
-/** A drawing as inline SVG (mm units), used for the on-screen previews. */
-function DrawingSvg({
-  drawing,
-  label,
-  className = 'plate-svg',
-}: {
-  drawing: Drawing;
-  label: string;
-  className?: string;
-}) {
-  return (
-    <svg
-      className={className}
-      viewBox={`0 0 ${drawing.width} ${drawing.height}`}
-      role="img"
-      aria-label={label}
-    >
-      {drawing.shapes.map((shape, i) => (
-        <path
-          key={i}
-          d={svgPath(shape.commands)}
-          fill={shape.fill ?? 'none'}
-          fillRule={shape.evenOdd ? 'evenodd' : 'nonzero'}
-          stroke={shape.stroke?.color}
-          strokeWidth={shape.stroke?.width}
-          strokeDasharray={shape.stroke?.dash?.join(' ')}
-        />
-      ))}
-    </svg>
-  );
-}
 
 /** Facilitator tool: random EU-style plates with the SCI band, edited and exported as a print PDF. */
 export function GeneratorView() {

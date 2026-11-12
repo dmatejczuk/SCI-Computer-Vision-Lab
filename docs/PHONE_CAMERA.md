@@ -12,7 +12,7 @@ Neither client nor server records images. P2P does not imply that traffic stays 
 docker compose up -d --build
 ```
 
-Open `http://localhost`, choose **Uruchom AI Challenge**, then **Kamera komputera**. No hosts entry or certificate is needed.
+Open `http://localhost`, choose **Uruchom stanowisko**, then **Kamera komputera**. No hosts entry or certificate is needed.
 The default also starts the internal signaling service, but phone pairing requires the network
 HTTPS origin. A localhost QR cannot reach the computer from a phone and is deliberately refused.
 
@@ -77,7 +77,7 @@ do not disable the firewall. The signaling port 3001 is never published by Compo
 
 ## Pair and use
 
-1. On the computer choose **Uruchom AI Challenge**, then **Telefon** in the camera hub. A QR and a large six-character invitation code appear.
+1. On the computer choose **Uruchom stanowisko**, then **Telefon** in the camera hub. A QR and a large six-character invitation code appear.
 2. On the phone scan the QR, or open the same HTTPS site, choose **Udostępnij kamerę** and enter the six-character code. The six boxes support paste, automatic advance and keyboard correction. Review the suggested device name and select **Dołącz do stanowiska**.
 3. Compare the six-digit code on both screens. Approve only the intended request on the computer.
 4. Once the computer approves it, the phone starts the camera by itself; allow camera permission.

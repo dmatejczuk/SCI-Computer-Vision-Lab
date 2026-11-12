@@ -2333,7 +2333,7 @@ canvas {
 }
 .hub-parts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .hub-parts .hub-part,
@@ -2764,10 +2764,112 @@ canvas {
 .part-topbar-spacer {
   flex: 1;
 }
-.role-instructor {
-  align-self: center;
-  margin-top: 40px;
+
+/* ---------- Small plate in the printed style (phone, reader lists) ---------- */
+.mini-plate {
+  display: inline-flex;
+  align-items: stretch;
+  height: 2.2em;
+  border: 0.14em solid #111;
+  border-radius: 0.3em;
+  background: #fff;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1;
+  vertical-align: middle;
+}
+.mini-plate-band {
+  display: grid;
+  place-items: end center;
+  width: 1.7em;
+  padding-bottom: 0.18em;
+  background: #003399;
+  color: #fff;
+  font-family: 'Plate', sans-serif;
+  font-size: 0.55em;
+  font-weight: 600;
+}
+.mini-plate-text {
+  display: grid;
+  place-items: center;
+  padding: 0 0.45em;
+  font-family: 'Plate', sans-serif;
+  font-size: 1.55em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #111;
+  white-space: nowrap;
+}
+
+/* ---------- Plates read on the computer, shown on the phone ---------- */
+.phone-plate-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #0b2a1ce6;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 6px 20px #0006;
+  animation: plate-toast 0.25s ease-out;
+}
+.phone-plate-toast .mini-plate {
+  font-size: 20px;
+}
+@keyframes plate-toast {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+.phone-page .phone-plates-badge {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  min-height: 0;
+  width: auto;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 20px;
+  background: #0009;
+  color: #fff;
   font-size: 12px;
-  color: var(--color-muted);
-  text-underline-offset: 4px;
+  font-weight: 600;
+}
+.phone-plates-list {
+  position: absolute;
+  top: calc(max(12px, env(safe-area-inset-top)) + 38px);
+  right: max(12px, env(safe-area-inset-right));
+  max-height: 60%;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: #000c;
+}
+.phone-plates-list ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.phone-plates-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.phone-plates-list .mini-plate {
+  font-size: 13px;
 }

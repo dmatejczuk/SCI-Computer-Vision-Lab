@@ -6,7 +6,7 @@ import type { PlateSession } from '../PlateSession';
 export function OutputStatus({ plates }: { plates: PlateSession }) {
   const state = useSyncExternalStore(plates.subscribe, plates.getSnapshot);
   const found = state.reading.length;
-  const ok = found === state.expected;
+  const ok = found >= state.expected.min && found <= state.expected.max;
   return (
     <div className={`output-status ${ok ? 'ok' : found ? 'partial' : ''}`} aria-live="polite">
       <p className="output-count">

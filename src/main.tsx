@@ -4,7 +4,7 @@ const App = lazy(() => import('./app/App').then((m) => ({ default: m.App })));
 const Phone = lazy(() =>
   import('./features/phone-camera/PhoneCameraPage').then((m) => ({ default: m.PhoneCameraPage })),
 );
-// Facilitator mode: the plate generator, without camera, ML or game modules.
+// Plate generator (/?role=plate-generator): no camera, ML or game modules. Not linked anywhere.
 const Generator = lazy(() =>
   import('./features/generator/GeneratorView').then((m) => ({ default: m.GeneratorView })),
 );
@@ -32,7 +32,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
 function currentRole() {
   if (location.pathname === '/phone') return 'phone';
   const role = new URLSearchParams(location.search).get('role');
-  return role === 'station' || role === 'instructor' ? role : '';
+  return role === 'station' || role === 'plate-generator' ? role : '';
 }
 function Entry() {
   const [role, setRole] = useState(currentRole);
@@ -43,13 +43,13 @@ function Entry() {
   }, []);
   if (role === 'phone') return <Phone />;
   if (role === 'station') return <App />;
-  if (role === 'instructor') return <Generator />;
+  if (role === 'plate-generator') return <Generator />;
   return (
     <main className="role-page">
       <a className="role-brand" href="/">
         SCI<span>_</span>
       </a>
-      <div className="eyebrow">AI Vision Challenge</div>
+      <div className="eyebrow">Computer Vision Lab</div>
       <h1>Jak chcesz dołączyć?</h1>
       <p>Wybierz rolę tego urządzenia.</p>
       <div className="role-options">
@@ -60,8 +60,8 @@ function Entry() {
           }}
         >
           <span aria-hidden="true">▣</span>
-          <strong>Uruchom AI Challenge</strong>
-          <small>Stanowisko z podglądem, nauką AI i grą</small>
+          <strong>Uruchom stanowisko</strong>
+          <small>Czytnik tablic, nauka AI i gra</small>
         </button>
         <button
           onClick={() => {
@@ -75,17 +75,6 @@ function Entry() {
         </button>
       </div>
       <p className="note">Aparat włączysz dopiero po zatwierdzeniu połączenia.</p>
-      <a
-        className="role-instructor"
-        href="/?role=instructor"
-        onClick={(event) => {
-          event.preventDefault();
-          history.pushState(null, '', '/?role=instructor');
-          setRole('instructor');
-        }}
-      >
-        Tryb prowadzącego
-      </a>
     </main>
   );
 }

@@ -74,12 +74,16 @@ export function LevelBar({ plates, onShowCode }: { plates: PlateSession; onShowC
       {done && (
         <div className="level-done" role="status">
           <strong>{t.done}</strong>
-          {next && (
-            <button className="primary-small" onClick={() => plates.setLevel(next.id)}>
-              {t.next}
-            </button>
-          )}
         </div>
+      )}
+      {next && (
+        // Levels are never locked: the group (or the facilitator) decides when to move on.
+        <button
+          className={done ? 'primary-small' : 'level-next'}
+          onClick={() => plates.setLevel(next.id)}
+        >
+          {t.goTo(next.id)} →
+        </button>
       )}
     </section>
   );

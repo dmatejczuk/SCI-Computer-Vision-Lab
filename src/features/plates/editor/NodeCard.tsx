@@ -10,6 +10,8 @@ export type BlockNodeData = {
   node: GraphNode;
   outputType?: SocketType;
   issues: string[];
+  /** The block has at least one wire (it can be unplugged). */
+  connected?: boolean;
 };
 export type BlockNode = Node<BlockNodeData, 'block'>;
 
@@ -23,7 +25,7 @@ function formatParam(type: GraphNode['type'], param: string, value: number) {
 
 /** One block: title, live thumbnail, sliders, sockets and error bubbles. */
 export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<BlockNode>) {
-  const { node, outputType, issues } = data;
+  const { node, outputType, issues, connected } = data;
   const editor = useEditor();
   const def = BLOCKS[node.type];
   const run = useNodeResult(editor.plates, node.id);
@@ -60,6 +62,16 @@ export const NodeCard = memo(function NodeCard({ data, selected }: NodeProps<Blo
           {def.icon}
         </span>
         <strong>{blockTitle(node.type)}</strong>
+        {!def.fixed && connected && (
+          <button
+            className="block-unplug nodrag"
+            aria-label={`${t.unplug}: ${blockTitle(node.type)}`}
+            title={t.unplugHint}
+            onClick={() => editor.unplug(node.id)}
+          >
+            ⏏
+          </button>
+        )}
         {!def.fixed && (
           <button
             className="block-delete nodrag"

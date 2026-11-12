@@ -8,8 +8,8 @@ processing and the text it read. UI labels are quoted in Polish as they appear i
 After the camera hub, a station chooses **Część 1: Czytnik tablic** or **Część 2: AI Challenge**.
 Part 1 uses the whole screen with one slim top bar (SCI mark, part switcher, levels and actions);
 the switcher changes parts without losing the camera source or a paired phone. **Nowa grupa**
-clears both parts. The plate generator is a facilitator tool: **Tryb prowadzącego** at the bottom
-of the first screen ("Jak chcesz dołączyć?"), `/?role=instructor`.
+clears both parts. The plate generator is a facilitator tool with its own, unlinked address:
+`/?role=plate-generator`.
 
 ## Camera image
 
@@ -49,8 +49,12 @@ Each level keeps its own graph while the group works.
   connected), **Wyczyść** returns to the level's starting graph (undoable).
 - **Zatrzymaj klatkę** freezes the camera frame inside the worker, so sliders can be tuned on a
   still image; then only the blocks after a changed slider are recomputed.
-- **Wynik** shows "Znaleziono N / M znaków"; **Uruchom czytnik tablic** is enabled when the count
-  is plausible (M − 2 … M + 1).
+- **Wynik** shows "Znaleziono N / M znaków" for a known plate (built-in image or a typed
+  **Moja tablica**) and "Znaleziono N znaków · tablica ma 7–8" for an unknown camera plate
+  (`characters` in `plates.config.json`). **Uruchom czytnik tablic** is always available and turns
+  green once the count fits; levels are never locked (**Przejdź do poziomu N**).
+- A block in the chain can be taken out without deleting it: ⏏ on the block, dragging a wire's
+  end into empty space, Alt while dragging the block, or clicking a wire and its ✂.
 
 Blocks: Kamera, Odcienie szarości (`cvtColor`), Rozmycie (`GaussianBlur`), Jasność i kontrast
 (`convertScaleAbs`), Wyrównaj kontrast (`equalizeHist`), Progowanie (`threshold`, manual or Otsu),
@@ -62,11 +66,23 @@ kształtów (`connectedComponentsWithStats`), Podgląd, Porównaj, Wynik.
 ## Reader screen
 
 The reader shows the camera image with the plate outline (when the graph has **Znajdź tablicę**)
-next to the Output image with a box around each character, the result as plate tiles in the tile
-font, and a table with each character's similarity and the two closest alternatives (e.g.
-"B 99%, 8 71%"). The reading is stabilised by voting over the last 7 frames. In **Moja tablica**
-students type what they assembled; misread, missing and extra characters are highlighted.
-**← Wróć do edytora** keeps the graph.
+next to the Output image with a box around each character, and the reading drawn as a printed
+plate (the generator's design). A status line says what to do next: no characters, wrong count,
+"Sprawdzam… Trzymaj tablicę nieruchomo" or **✓ Odczytano tablicę**. Every character shows its
+similarity in green (≥ 75 %), amber or red; hovering shows the closest alternatives, and the
+table under **Jak bardzo jest pewny?** lists them all. In **Moja tablica** students type what they
+assembled; misread, missing and extra characters are highlighted. **← Wróć do edytora** keeps the
+graph.
+
+A camera reading is **confirmed** when it is complete (7–8 characters), every character is at
+least 75 % similar and the same text comes back for 5 passes in a row
+(`recognition/confirm.ts`). Confirmed plates join **Odczytane tablice** (newest first, repeats
+counted, cleared by **Nowa grupa**); the same plate counts again after it has left the picture.
+
+With a paired phone, each confirmed plate also appears on the phone ("✓ Odczytano tablicę" with
+the plate, a short vibration) and the phone keeps the list under **Odczytane: N**. The computer
+sends only plate texts over a WebRTC data channel negotiated with the video (no extra signaling,
+no images); the phone validates every message.
 
 ## Recognition
 
@@ -133,7 +149,7 @@ with a verdict and **Kopiuj wyniki** (JSON) for the room survey.
 | opentype.js | 1.3.4 | MIT | Reading the tile font to draw templates and plate images |
 | Barlow Semi Condensed SemiBold | 1.408 | SIL OFL 1.1 | Plate font (reader templates and generator) |
 
-## Plate generator (facilitator mode)
+## Plate generator (`/?role=plate-generator`)
 
 Random plate numbers in the Polish style (district code of 2–3 letters, a space, 7–8 characters in
 total; like real plates, the distinguishing part avoids B, D, I, O and Z), editable before

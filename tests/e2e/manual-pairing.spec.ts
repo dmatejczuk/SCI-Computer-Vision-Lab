@@ -8,7 +8,7 @@ test('role selection, typed code, approval, signaling recovery and replacement',
     r.fulfill({ json: { publicOrigin: 'https://192.0.2.10' } }),
   );
   await page.goto('/');
-  await page.getByRole('button', { name: /Uruchom AI Challenge/ }).click();
+  await page.getByRole('button', { name: /Uruchom stanowisko/ }).click();
   await page.getByRole('button', { name: 'Telefon', exact: true }).click();
   const code = await page.getByLabel('Kod dołączenia', { exact: true }).textContent();
   expect(code).toMatch(/^[A-Z2-9]{6}$/);

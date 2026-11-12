@@ -13,6 +13,18 @@ export function cleanPlate(text: string) {
 }
 
 /**
+ * Splits a read plate the Polish way for display: the leading letters (at most 3, the district)
+ * and the rest, e.g. "WE12345" → "WE 12345", "KOT2026" → "KOT 2026".
+ */
+export function formatPlate(text: string) {
+  const plain = cleanPlate(text);
+  const district = Math.min(3, plain.match(/^[A-Z]+/)?.[0].length ?? 0);
+  return district && district < plain.length
+    ? `${plain.slice(0, district)} ${plain.slice(district)}`
+    : plain;
+}
+
+/**
  * Compares the reader's text with the plate the student assembled, position by position.
  * Every slot gets a verdict, so the screen can highlight misread characters.
  */

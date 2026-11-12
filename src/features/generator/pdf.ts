@@ -56,7 +56,7 @@ export function buildPdf(pages: Drawing[], title = 'Tablice SCI'): Uint8Array {
   objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
   objects[2] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pages.length} >>`;
   const safeTitle = title.replace(/[^\x20-\x7e]/g, '?').replace(/([()\\])/g, '\\$1');
-  objects[3] = `<< /Title (${safeTitle}) /Producer (AI Vision Challenge) >>`;
+  objects[3] = `<< /Title (${safeTitle}) /Producer (SCI Computer Vision Lab) >>`;
   pages.forEach((page, i) => {
     const id = pageIds[i];
     const stream = contentStream(page);

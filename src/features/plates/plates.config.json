@@ -1,5 +1,5 @@
 {
-  "$comment": "Tile font and character set of the plate reader. To change the font: put the font file (TTF/OTF) into public/plates/fonts/, set font.file and font.sha256 (npm run verify:plates prints the checksum on mismatch) and adjust charset to the printed tiles. tile gives the plate geometry in any unit (e.g. tenths of a millimetre): tile width and height, gap between tiles, frame border and capital letter height. The crop block uses it to straighten tilted plates without squashing characters, and generated level images use it. Everything else (templates, level images, tests) is generated from this file. style: \"printed\" for EU-style plates from the generator (part 3), \"tiles\" for the 3D tile frame; level images and the crop block follow it.",
+  "$comment": "Tile font and character set of the plate reader. To change the font: put the font file (TTF/OTF) into public/plates/fonts/, set font.file and font.sha256 (npm run verify:plates prints the checksum on mismatch) and adjust charset to the printed tiles. tile gives the plate geometry in any unit (e.g. tenths of a millimetre): tile width and height, gap between tiles, frame border and capital letter height. The crop block uses it to straighten tilted plates without squashing characters, and generated level images use it. Everything else (templates, level images, tests) is generated from this file. style: \"printed\" for EU-style plates from the generator (part 3), \"tiles\" for the 3D tile frame; level images and the crop block follow it. characters: how many characters a plate may have (the generator prints 7-8); the Output counter and the reader use this range when the plate is not known.",
   "font": {
     "file": "/plates/fonts/BarlowSemiCondensed-SemiBold.ttf",
     "sha256": "bd299f4bc5b44d30be8d42e9bad3a5df7d66af1cd55d0ed72a8b8916360a1424",
@@ -8,6 +8,10 @@
   },
   "style": "printed",
   "charset": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  "characters": {
+    "min": 7,
+    "max": 8
+  },
   "slots": 7,
   "tile": {
     "width": 124,

@@ -235,6 +235,25 @@ export function removeNode(graph: Graph, id: string): Graph {
 }
 
 /**
+ * Takes a block out of the chain but keeps it on the canvas, moved to `position`: its wires go
+ * and its neighbours are joined, exactly as when the block is deleted.
+ */
+export function unplugNode(graph: Graph, id: string, position?: { x: number; y: number }): Graph {
+  const node = graph.nodes.find((item) => item.id === id);
+  if (!node || BLOCKS[node.type].fixed) return graph;
+  const without = removeNode(graph, id);
+  return {
+    ...without,
+    nodes: [...without.nodes, { ...node, position: position ?? node.position }],
+  };
+}
+
+/** Removes one wire. */
+export function cutEdge(graph: Graph, id: string): Graph {
+  return { ...graph, edges: graph.edges.filter((edge) => edge.id !== id) };
+}
+
+/**
  * A fingerprint of each node's computation: its type, parameters and everything upstream.
  * Equal fingerprints mean equal results for the same input frame (used for caching).
  */

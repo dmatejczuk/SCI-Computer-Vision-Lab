@@ -36,6 +36,8 @@ import {
   nodeIssues,
   removeNode,
   resolveTypes,
+  unplugNode,
+  cutEdge,
   type Connection,
 } from '../graph/graph';
 import { BLOCKS, blockTitle } from '../graph/nodes';
@@ -121,7 +123,12 @@ function Flow({
           id: node.id,
           type: 'block',
           position: node.position,
-          data: { node, outputType: types.get(node.id), issues: issues.get(node.id) ?? [] },
+          data: {
+            node,
+            outputType: types.get(node.id),
+            issues: issues.get(node.id) ?? [],
+            connected: graph.edges.some((e) => e.source === node.id || e.target === node.id),
+          },
           deletable: !BLOCKS[node.type].fixed,
         };
       }),
@@ -181,6 +188,15 @@ function Flow({
       },
       remove(node) {
         plates.apply(removeNode(graphRef.current, node));
+      },
+      unplug(node) {
+        // The loose block drops below its old place, so it is clearly out of the chain.
+        const current = graphRef.current;
+        const at = current.nodes.find((item) => item.id === node)?.position;
+        plates.apply(unplugNode(current, node, at && { x: at.x, y: at.y + 260 }));
+      },
+      cutWire(edge) {
+        plates.apply(cutEdge(graphRef.current, edge));
       },
       preview(node) {
         plates.setPreview(node);
@@ -259,6 +275,33 @@ function Flow({
     [],
   );
 
+  // Dragging a wire's end: onto another socket moves the wire, into empty space unplugs it.
+  const reconnected = useRef(false);
+  const onReconnectStart = useCallback(() => {
+    reconnected.current = false;
+  }, []);
+  const onReconnect = useCallback(
+    (old: Wire, connection: { source: string; target: string; targetHandle?: string | null }) => {
+      const without = cutEdge(graphRef.current, old.id);
+      const wanted: Connection = {
+        source: connection.source,
+        target: connection.target,
+        targetHandle: connection.targetHandle ?? 'in',
+      };
+      if (!canConnect(without, wanted).ok) return;
+      reconnected.current = true;
+      plates.apply(connect(without, wanted));
+    },
+    [plates],
+  );
+  const onReconnectEnd = useCallback(
+    (_event: MouseEvent | TouchEvent, edge: Wire) => {
+      if (!reconnected.current) plates.apply(cutEdge(graphRef.current, edge.id));
+      reconnected.current = false;
+    },
+    [plates],
+  );
+
   const onNodesChange = useCallback((changes: NodeChange<BlockNode>[]) => {
     setRfNodes((nodes) =>
       applyNodeChanges(
@@ -299,6 +342,11 @@ function Flow({
       const free = !current.edges.some(
         (edge) => edge.source === dragged.id || edge.target === dragged.id,
       );
+      // Blender-style: Alt while dragging pulls the block out of its wires.
+      if (!free && event.altKey && nodes.length === 1) {
+        plates.apply(unplugNode(positioned, dragged.id));
+        return;
+      }
       const wire = free && nodes.length === 1 ? edgeAt(point.x, point.y) : null;
       if (wire) {
         // Blender-style: a loose block dropped onto a wire is inserted into it.
@@ -399,6 +447,9 @@ function Flow({
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onReconnect={onReconnect}
+            onReconnectStart={onReconnectStart}
+            onReconnectEnd={onReconnectEnd}
             onConnectEnd={onConnectEnd}
             isValidConnection={isValidConnection}
             onNodeDrag={onNodeDrag}
