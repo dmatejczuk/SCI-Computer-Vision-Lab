@@ -79,13 +79,78 @@ export class VisionClient {
   }
 }
 
-/** Grabs the current video frame, scaled to `width`, without mirroring. */
-export function grabFrame(video: HTMLVideoElement, width: number) {
+/** How the camera image is turned before processing (a phone may send a portrait or sideways image). */
+export interface FrameOrientation {
+  /** Clockwise rotation in degrees. */
+  rotate: 0 | 90 | 180 | 270;
+  /** Left-right flip of the final image. */
+  mirror: boolean;
+}
+export const UPRIGHT: FrameOrientation = { rotate: 0, mirror: false };
+/** Plates are wide: a taller image is cropped around its centre to this width / height. */
+export const LANDSCAPE_RATIO = 4 / 3;
+
+export interface FrameGeometry {
+  /** Size of the rotated source image. */
+  rotated: { width: number; height: number };
+  /** Rows of the rotated image that are kept (centre crop to landscape). */
+  crop: { top: number; height: number };
+  scale: number;
+  /** Size of the produced frame. */
+  width: number;
+  height: number;
+}
+
+/** Rotation, landscape crop and scaling of a `sourceWidth`×`sourceHeight` camera frame. */
+export function frameGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  orientation: FrameOrientation,
+  maxWidth: number,
+): FrameGeometry {
+  const sideways = orientation.rotate % 180 !== 0;
+  const rotated = sideways
+    ? { width: sourceHeight, height: sourceWidth }
+    : { width: sourceWidth, height: sourceHeight };
+  const height = Math.min(rotated.height, Math.round(rotated.width / LANDSCAPE_RATIO));
+  const crop = { top: Math.floor((rotated.height - height) / 2), height };
+  const scale = Math.min(1, maxWidth / rotated.width);
+  return {
+    rotated,
+    crop,
+    scale,
+    width: Math.max(1, Math.round(rotated.width * scale)),
+    height: Math.max(1, Math.round(crop.height * scale)),
+  };
+}
+
+let scratch: HTMLCanvasElement | null = null;
+
+/**
+ * Grabs the current video frame turned upright (rotation, flip), cropped to landscape and
+ * scaled to at most `width`. The frame is drawn into `canvas` when given (the visible camera
+ * preview), so the preview shows exactly what the operations receive. Never mirrored by default.
+ */
+export function grabFrame(
+  video: HTMLVideoElement,
+  width: number,
+  orientation: FrameOrientation = UPRIGHT,
+  canvas?: HTMLCanvasElement | null,
+) {
   if (!video.videoWidth || video.readyState < 2) return Promise.resolve(null);
-  const scale = Math.min(1, width / video.videoWidth);
-  return createImageBitmap(video, {
-    resizeWidth: Math.round(video.videoWidth * scale),
-    resizeHeight: Math.round(video.videoHeight * scale),
-    resizeQuality: 'medium',
-  });
+  const geometry = frameGeometry(video.videoWidth, video.videoHeight, orientation, width);
+  const target = canvas ?? (scratch ??= document.createElement('canvas'));
+  if (target.width !== geometry.width) target.width = geometry.width;
+  if (target.height !== geometry.height) target.height = geometry.height;
+  const context = target.getContext('2d');
+  if (!context) return Promise.resolve(null);
+  const { rotated, crop, scale } = geometry;
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.imageSmoothingQuality = 'medium';
+  context.scale(scale, scale);
+  context.translate(rotated.width / 2, rotated.height / 2 - crop.top);
+  if (orientation.mirror) context.scale(-1, 1);
+  context.rotate((orientation.rotate * Math.PI) / 180);
+  context.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
+  return createImageBitmap(target);
 }

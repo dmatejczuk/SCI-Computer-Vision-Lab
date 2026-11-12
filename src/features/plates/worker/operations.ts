@@ -1,5 +1,5 @@
 import type { BlockType, Point, SocketType } from '../graph/types';
-import { plateAspect } from '../plateConfig';
+import { plateConfig, plateShapeAspect } from '../plateConfig';
 import type { CV, Mat } from './cv';
 import type { MatScope } from './scope';
 
@@ -80,10 +80,12 @@ function polygonArea(points: Point[]) {
 export function findPlateQuad(cv: CV, scope: MatScope, binary: Mat): Point[] | null {
   const contours = scope.track(new cv.MatVector());
   const hierarchy = scope.mat();
-  // Close thin dark gaps first (seams between tiles, especially in shadow), so the plate
-  // stays one white area instead of falling apart into separate tiles.
+  // Tile frames: close thin dark gaps first (seams between tiles, especially in shadow), so
+  // the plate stays one white area instead of falling apart into separate tiles. A printed
+  // plate has no seams, and a strong closing would join its white field to the white "SCI"
+  // and logo on the band, so it only gets a light one.
   const closed = scope.mat();
-  const k = Math.max(3, Math.round(binary.cols / 90) | 1);
+  const k = plateConfig.style === 'tiles' ? Math.max(3, Math.round(binary.cols / 90) | 1) : 3;
   const kernel = scope.track(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(k, k)));
   cv.morphologyEx(binary, closed, cv.MORPH_CLOSE, kernel);
   cv.findContours(closed, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
@@ -233,10 +235,11 @@ export const OPERATIONS: Partial<Record<BlockType, Op>> = {
     const sy = input.mat.rows / region.base.rows;
     const quad = region.quad.map((p) => ({ x: p.x * sx, y: p.y * sy }));
     const { width, height } = quadSize(quad);
-    // A tilted plate looks narrower than it is. When the outline resembles our plate frame,
-    // straighten it to the known proportions so characters keep their true shape.
+    // A tilted plate looks narrower than it is. When the outline resembles our plate (tile
+    // frame or printed plate, see plates.config.json), straighten it to the known proportions
+    // so characters keep their true shape.
     const measured = width / Math.max(1, height);
-    const known = plateAspect();
+    const known = plateShapeAspect();
     const aspect = measured > known * 0.6 && measured < known * 1.6 ? known : measured;
     const outHeight = Math.max(24, Math.min(200, Math.round(height)));
     const outWidth = Math.max(48, Math.min(1000, Math.round(aspect * outHeight)));

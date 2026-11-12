@@ -1,5 +1,11 @@
 import type { SessionManager } from '../../services/SessionManager';
-import { VisionClient, WorkerError, grabFrame } from './VisionClient';
+import {
+  VisionClient,
+  WorkerError,
+  grabFrame,
+  UPRIGHT,
+  type FrameOrientation,
+} from './VisionClient';
 import { connect, createNode } from './graph/graph';
 import type { BlockType, Graph } from './graph/types';
 import { levelById, type LevelId } from './levels';
@@ -59,6 +65,8 @@ export interface PlateState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: 'csp' | 'failed' | null;
   frozen: boolean;
+  /** How the camera image is turned before processing; kept across groups (station setup). */
+  orientation: FrameOrientation;
   /** A generated plate photo used instead of the camera (level 1). */
   sample: { text: string; scene: PlateSceneOptions } | null;
   /** Characters read from the Output block, stabilised over recent frames. */
@@ -88,6 +96,7 @@ const initial = (): PlateState => ({
   status: 'idle',
   error: null,
   frozen: false,
+  orientation: UPRIGHT,
   sample: levelById(1).sample,
   reading: [],
   expected: levelById(1).sample!.text.length,
@@ -117,6 +126,8 @@ export class PlateSession {
   private resultListeners = new Set<(result: ProcessResult) => void>();
   private vision = new VisionClient();
   private video: HTMLVideoElement | null = null;
+  /** Visible camera preview: frames are drawn there exactly as the worker receives them. */
+  private dock: HTMLCanvasElement | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private running = false;
   private inFlight = false;
@@ -183,9 +194,37 @@ export class PlateSession {
     this.invalidate();
   }
 
+  /** The canvas that shows the turned and cropped camera frame. */
+  attachPreview(canvas: HTMLCanvasElement | null) {
+    this.dock = canvas;
+  }
+
+  /** Turns the camera image (rotation and left-right flip). A frozen frame is dropped. */
+  setOrientation(orientation: Partial<FrameOrientation>) {
+    const next = { ...this.state.orientation, ...orientation };
+    if (
+      next.rotate === this.state.orientation.rotate &&
+      next.mirror === this.state.orientation.mirror
+    )
+      return;
+    this.voter.clear();
+    this.patch({ orientation: next, reading: [] });
+    if (this.state.frozen) void this.unfreeze();
+    else this.invalidate();
+  }
+
+  /** Rotates the camera image by a quarter turn (clockwise, or counter-clockwise). */
+  rotate(clockwise = true) {
+    const step = clockwise ? 90 : 270;
+    this.setOrientation({
+      rotate: ((this.state.orientation.rotate + step) % 360) as FrameOrientation['rotate'],
+    });
+  }
+
   detach() {
     this.running = false;
     this.video = null;
+    this.dock = null;
     clearTimeout(this.timer);
     this.session.setPlatesLive(false);
   }
@@ -339,7 +378,12 @@ export class PlateSession {
     if (this.state.sample) source = { kind: 'sample', ...this.state.sample };
     else if (this.state.frozen) source = { kind: 'frozen' };
     else if (this.video && this.session.frames.fresh) {
-      const bitmap = await grabFrame(this.video, FULL_WIDTH).catch(() => null);
+      const bitmap = await grabFrame(
+        this.video,
+        FULL_WIDTH,
+        this.state.orientation,
+        this.dock,
+      ).catch(() => null);
       if (bitmap) source = { kind: 'camera', bitmap };
     }
     if (!source || generation !== this.generation || !this.running) {
@@ -433,7 +477,7 @@ export class PlateSession {
 
   async freeze() {
     if (this.state.frozen || !this.video || this.state.status !== 'ready') return;
-    const bitmap = await grabFrame(this.video, FULL_WIDTH);
+    const bitmap = await grabFrame(this.video, FULL_WIDTH, this.state.orientation, this.dock);
     if (!bitmap) return;
     await this.vision.request<'ok'>({ type: 'freeze', bitmap }, [bitmap]);
     this.voter.clear();
@@ -465,7 +509,7 @@ export class PlateSession {
     this.levelGraphs.clear();
     this.lastChange = null;
     this.dirty = true;
-    this.state = initial();
+    this.state = { ...initial(), orientation: this.state.orientation };
     this.startGraph = this.state.graph;
     this.listeners.forEach((listener) => listener());
   }

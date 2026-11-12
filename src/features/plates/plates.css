@@ -4,25 +4,36 @@ main.plates {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
-  padding: 4px 0 14px;
+  gap: 0;
+  padding: 0;
   min-height: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 main.plates[hidden] {
   display: none;
 }
 .plates-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px 16px;
+  gap: 8px 14px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
   flex-wrap: wrap;
 }
-.plates-toolbar h1 {
-  margin: 0;
-  white-space: nowrap;
-  font-size: 20px;
-  line-height: 1.2;
+.plates-brand {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  color: var(--color-primary);
+}
+.plates-brand span {
+  color: var(--color-success);
+}
+.plates-toolbar .plates-actions {
+  margin-left: auto;
 }
 .plates-toolbar .level-tabs {
   flex: 0 1 auto;
@@ -42,7 +53,10 @@ main.plates[hidden] {
   background: var(--color-accent);
   border-color: var(--color-primary);
 }
-.plates-status {
+.plates-status,
+main.plates > .error {
+  margin: 0;
+  padding: 6px 12px;
   color: var(--color-muted);
 }
 .plates-loading {
@@ -65,19 +79,23 @@ main.plates[hidden] {
 .plates-workspace {
   position: relative;
   flex: 1;
-  min-height: 420px;
+  min-height: 0;
   display: flex;
 }
 .node-editor {
   flex: 1;
   display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
-  border: 1px solid var(--color-line);
-  border-radius: 8px;
+  grid-template-columns: 280px minmax(0, 1fr);
   overflow: hidden;
   background: var(--color-surface);
-  min-height: 420px;
-  height: calc(100vh - 340px);
+  min-height: 0;
+  height: 100%;
+}
+.palette .level-bar {
+  margin: -12px -12px 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
 }
 .palette {
   border-right: 1px solid var(--color-line);
@@ -424,24 +442,57 @@ main.plates[hidden] {
   right: 12px;
   top: 12px;
   z-index: 5;
-  width: 180px;
+  width: 260px;
   margin: 0;
   border-radius: 6px;
   overflow: hidden;
   background: #0d1715;
   box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
 }
-.camera-dock video {
-  display: block;
-  width: 100%;
-  height: auto;
-  /* The plate module never mirrors the camera image. */
+.camera-dock video.camera-source {
+  /* Keeps decoding frames; the canvas below shows them turned and cropped. */
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  opacity: 0.01;
+  pointer-events: none;
   transform: none;
 }
+.camera-dock canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #0d1715;
+}
 .camera-dock figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   font-size: 10px;
   color: #fff;
-  padding: 4px 8px;
+  padding: 4px 4px 4px 8px;
+}
+.orientation-tools {
+  display: flex;
+  gap: 2px;
+}
+.orientation-tools button {
+  min-height: 0;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+  border: 0;
+  border-radius: 3px;
+}
+.orientation-tools button:hover,
+.orientation-tools button[aria-pressed='true'] {
+  background: rgb(255 255 255 / 30%);
 }
 .plates-preview canvas {
   display: block;
@@ -485,7 +536,7 @@ main.plates[hidden] {
 .view-reader .camera-dock {
   top: auto;
   bottom: 12px;
-  width: 150px;
+  width: 200px;
 }
 .launch-reader {
   background: var(--color-primary);

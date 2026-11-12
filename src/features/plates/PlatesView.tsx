@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { SessionManager } from '../../services/SessionManager';
+import { PartNav, type Part } from '../../components/PartNav';
 import { plates as text } from '../../i18n/plates';
 import { CodeModal } from './editor/CodeModal';
 import { NodeEditor } from './editor/NodeEditor';
@@ -23,13 +24,21 @@ if (typeof FontFace !== 'undefined')
 const ALL_BLOCKS = (Object.keys(BLOCKS) as BlockType[]).filter((type) => !BLOCKS[type].fixed);
 
 /** Part 1 of the workshop: the plate reader (node editor and reader screens). */
-export function PlatesView({ session }: { session: SessionManager }) {
+export function PlatesView({
+  session,
+  onPart,
+}: {
+  session: SessionManager;
+  onPart: (part: Part) => void;
+}) {
   const plates = plateSessionFor(session);
   const state = useSyncExternalStore(plates.subscribe, plates.getSnapshot);
   const video = useRef<HTMLVideoElement>(null);
+  const preview = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const element = video.current!;
     session.enterPlates(element);
+    plates.attachPreview(preview.current);
     void plates.attach(element);
     return () => {
       plates.detach();
@@ -42,7 +51,13 @@ export function PlatesView({ session }: { session: SessionManager }) {
   return (
     <main className="plates" aria-labelledby="plates-title">
       <div className="plates-toolbar">
-        <h1 id="plates-title">{text.title}</h1>
+        <span className="plates-brand" aria-hidden="true">
+          SCI<span>_</span>
+        </span>
+        <h1 id="plates-title" className="visually-hidden">
+          {text.title}
+        </h1>
+        <PartNav current="plates" onChange={onPart} compact />
         {state.view === 'editor' && <LevelTabs plates={plates} />}
         <div className="plates-actions">
           {state.view === 'editor' ? (
@@ -89,7 +104,6 @@ export function PlatesView({ session }: { session: SessionManager }) {
           {state.error === 'csp' ? text.perf.csp : text.visionFailed}
         </p>
       )}
-      {state.view === 'editor' && <LevelBar plates={plates} onShowCode={() => setCode(true)} />}
       <div className={`plates-workspace view-${state.view}`}>
         {state.view === 'editor' ? (
           <NodeEditor
@@ -97,16 +111,52 @@ export function PlatesView({ session }: { session: SessionManager }) {
             plates={plates}
             blocks={state.allBlocks ? ALL_BLOCKS : levelById(state.level).blocks}
             outputStatus={outputStatus}
+            sidebar={<LevelBar plates={plates} onShowCode={() => setCode(true)} />}
           />
         ) : (
           <ReaderView plates={plates} />
         )}
         <figure className="camera-dock" hidden={!!state.sample}>
-          {/* No mirroring here: a mirrored plate would show reversed characters. */}
-          <video ref={video} autoPlay muted playsInline aria-label={text.cameraLabel} />
+          {/* The stream plays in a tiny hidden video; the canvas shows the frame exactly as the
+              operations receive it: turned upright, cropped to landscape and never mirrored. */}
+          <video
+            ref={video}
+            className="camera-source"
+            autoPlay
+            muted
+            playsInline
+            aria-hidden="true"
+          />
+          <canvas ref={preview} role="img" aria-label={text.cameraLabel} />
           {state.frozen && <span className="plates-frozen-badge">{text.frozenBadge}</span>}
           <figcaption>
-            {text.cameraLabel} · {state.fps ? state.fps.toFixed(0) : '–'} {text.fpsUnit}
+            <span>
+              {text.cameraLabel} · {state.fps ? state.fps.toFixed(0) : '–'} {text.fpsUnit}
+            </span>
+            <span className="orientation-tools" role="group" aria-label={text.orientation.label}>
+              <button
+                title={text.orientation.left}
+                aria-label={text.orientation.left}
+                onClick={() => plates.rotate(false)}
+              >
+                ⟲
+              </button>
+              <button
+                title={text.orientation.right}
+                aria-label={text.orientation.right}
+                onClick={() => plates.rotate(true)}
+              >
+                ⟳
+              </button>
+              <button
+                title={text.orientation.mirror}
+                aria-label={text.orientation.mirror}
+                aria-pressed={state.orientation.mirror}
+                onClick={() => plates.setOrientation({ mirror: !state.orientation.mirror })}
+              >
+                ⇋
+              </button>
+            </span>
           </figcaption>
         </figure>
       </div>

@@ -124,7 +124,7 @@ describe('recognition on generated plate photos', () => {
   });
 
   it('a shadow defeats a single threshold but not adaptive thresholding', () => {
-    const shadow: PlateSceneOptions = { shadow: 0.7, seed: 7 };
+    const shadow: PlateSceneOptions = { shadow: 0.8, seed: 7 };
     expect(read('WX4821', shadow, BASIC()).text).not.toBe('WX4821');
     const adaptive = chain('grayscale', ['adaptive', { window: 15, sensitivity: 10 }], 'invert');
     expect(read('WX4821', shadow, adaptive).text).toBe('WX4821');

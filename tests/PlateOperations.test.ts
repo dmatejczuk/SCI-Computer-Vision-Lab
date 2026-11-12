@@ -3,6 +3,7 @@ import { connect, createNode } from '../src/features/plates/graph/graph';
 import type { BlockType, Graph, GraphNode } from '../src/features/plates/graph/types';
 import type { CV, Mat } from '../src/features/plates/worker/cv';
 import { executeGraph, ResultCache } from '../src/features/plates/worker/engine';
+import { plateShapeAspect } from '../src/features/plates/plateConfig';
 import { findPlateQuad, quadSize } from '../src/features/plates/worker/operations';
 import { MatScope, withScope } from '../src/features/plates/worker/scope';
 import { loadTestOpenCv, rgbaImage } from './helpers/opencv';
@@ -112,7 +113,8 @@ describe('operations on a generated plate image', () => {
       expect(Math.abs(br.y - PLATE.bottom)).toBeLessThan(12);
       const cropped = run.values.get(crop.id);
       if (!cropped || cropped.type === 'region') throw new Error('no crop');
-      expect(cropped.mat.cols / cropped.mat.rows).toBeCloseTo(440 / 160, 0);
+      // The outline is close enough to the configured plate to be straightened to its shape.
+      expect(cropped.mat.cols / cropped.mat.rows).toBeCloseTo(plateShapeAspect(), 0);
       expect(run.runs.get(shapes.id)?.info).toBe('5');
     });
     expect(MatScope.live).toBe(0);

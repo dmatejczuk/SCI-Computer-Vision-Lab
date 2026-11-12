@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { SCI_WEBSITE_URL } from '../../config/branding';
 import { pl } from '../../i18n/pl';
-export function AppHeader({ children }: { children?: ReactNode }) {
+export function AppHeader({ children, hidden }: { children?: ReactNode; hidden?: boolean }) {
   return (
-    <header>
+    <header hidden={hidden}>
       <div className="brand">
         <a
           className="brand-mark"

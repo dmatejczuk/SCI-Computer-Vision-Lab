@@ -88,10 +88,13 @@ function Flow({
   plates,
   blocks,
   outputStatus,
+  sidebar,
 }: {
   plates: PlateSession;
   blocks: BlockType[];
   outputStatus?: ReactNode;
+  /** Shown above the block palette (the level's task and hints). */
+  sidebar?: ReactNode;
 }) {
   const state = useSyncExternalStore(plates.subscribe, plates.getSnapshot);
   const graph = state.graph;
@@ -360,6 +363,7 @@ function Flow({
     <EditorContext.Provider value={actions}>
       <div className="node-editor">
         <Palette
+          top={sidebar}
           blocks={blocks}
           onAdd={(type, element) => {
             const box = element.getBoundingClientRect();
@@ -444,6 +448,7 @@ export function NodeEditor(props: {
   plates: PlateSession;
   blocks: BlockType[];
   outputStatus?: ReactNode;
+  sidebar?: ReactNode;
 }) {
   return (
     <ReactFlowProvider>

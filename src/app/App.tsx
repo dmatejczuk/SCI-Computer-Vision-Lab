@@ -11,12 +11,12 @@ import { HandSymbol } from '../components/HandSymbol';
 import { GameView } from '../features/game/GameView';
 import { InstructorPanel } from '../features/instructor/InstructorPanel';
 import { plates } from '../i18n/plates';
+import { PartNav, type Part } from '../components/PartNav';
 // Part 1 (plate reader) is a separate chunk with OpenCV.js; it does not load TFJS or Phaser.
 const PlatesView = lazy(() =>
   import('../features/plates/PlatesView').then((m) => ({ default: m.PlatesView })),
 );
 const session = new SessionManager();
-type Part = 'plates' | 'gestures';
 export function App() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const video = useRef<HTMLVideoElement>(null);
@@ -25,6 +25,8 @@ export function App() {
   const [part, setPart] = useState<Part | null>(null);
   const hub = part === null && state.controlMode !== 'KEYBOARD';
   const platesOpen = part === 'plates' && state.controlMode !== 'KEYBOARD';
+  // Part 1 uses the whole screen with its own slim top bar.
+  const fullscreen = platesOpen;
   const choosing = state.stage === 'START' && !state.busy && !state.error;
   const phone = useSyncExternalStore(session.phone.subscribe, session.phone.getSnapshot);
   // A paired phone needs no source controls in the workshop; recovery uses the error retry.
@@ -32,6 +34,8 @@ export function App() {
   useEffect(() => {
     if (state.stage === 'START') setPart(null);
   }, [state.stage]);
+  // Both parts need a camera: without one we go back to setup.
+  const changePart = (next: Part) => setPart(state.cameraLabel ? next : null);
   const chooseCamera = async (source: 'local' | 'phone') => {
     setPart(null);
     await session.selectSource(source);
@@ -124,8 +128,8 @@ export function App() {
     </div>
   );
   return (
-    <div className="app-shell">
-      <AppHeader>
+    <div className={`app-shell ${fullscreen ? 'fullscreen-part' : ''}`}>
+      <AppHeader hidden={fullscreen}>
         {hub && (
           <a className="role-back" href="/">
             Zmień rolę urządzenia
@@ -153,17 +157,8 @@ export function App() {
           </button>
         </div>
       </AppHeader>
-      {!hub && (
-        <div className="part-switcher" role="group" aria-label={plates.parts.label}>
-          <button aria-pressed={platesOpen} onClick={() => setPart('plates')}>
-            {plates.parts.first}: {plates.parts.platesShort}
-          </button>
-          <button aria-pressed={!platesOpen} onClick={() => setPart('gestures')}>
-            {plates.parts.second}: {plates.parts.gesturesShort}
-          </button>
-        </div>
-      )}
-      <nav hidden={hub || platesOpen} aria-label={pl.workshop}>
+      {!hub && !fullscreen && <PartNav current="gestures" onChange={changePart} />}
+      <nav hidden={hub || fullscreen} aria-label={pl.workshop}>
         <ol className="steps">
           {pl.steps.map((label, index) => (
             <li
@@ -180,7 +175,7 @@ export function App() {
       {!hub && state.source === 'phone' && !phonePaired && <PairingPanel session={session} />}
       {platesOpen && (
         <Suspense fallback={<p className="plates-loading">{plates.loadingModule}</p>}>
-          <PlatesView session={session} />
+          <PlatesView session={session} onPart={changePart} />
         </Suspense>
       )}
       {state.error === 'lost' && (
@@ -192,7 +187,7 @@ export function App() {
         />
       )}
       <main
-        hidden={platesOpen}
+        hidden={fullscreen}
         className={`${hub ? 'camera-hub' : ''} ${stage === 'GAME' ? 'playing' : ''} ${stage === 'START' ? 'welcome' : ''} ${stage === 'EXPLAIN' ? 'explaining' : ''}`}
       >
         <section
@@ -599,7 +594,7 @@ export function App() {
           </section>
         )}
       </main>
-      <div className="app-bottom">
+      <div className="app-bottom" hidden={fullscreen}>
         <span>
           <i className="privacy-dot" />
           {pl.privacy}

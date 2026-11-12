@@ -1,14 +1,21 @@
 {
-  "$comment": "Tile font and character set of the plate reader. To change the font: put the font file (TTF/OTF) into public/plates/fonts/, set font.file and font.sha256 (npm run verify:plates prints the checksum on mismatch) and adjust charset to the printed tiles. tile gives the plate geometry in any unit (e.g. tenths of a millimetre): tile width and height, gap between tiles, frame border and capital letter height. The crop block uses it to straighten tilted plates without squashing characters, and generated level images use it. Everything else (templates, level images, tests) is generated from this file.",
+  "$comment": "Tile font and character set of the plate reader. To change the font: put the font file (TTF/OTF) into public/plates/fonts/, set font.file and font.sha256 (npm run verify:plates prints the checksum on mismatch) and adjust charset to the printed tiles. tile gives the plate geometry in any unit (e.g. tenths of a millimetre): tile width and height, gap between tiles, frame border and capital letter height. The crop block uses it to straighten tilted plates without squashing characters, and generated level images use it. Everything else (templates, level images, tests) is generated from this file. style: \"printed\" for EU-style plates from the generator (part 3), \"tiles\" for the 3D tile frame; level images and the crop block follow it.",
   "font": {
-    "file": "/plates/fonts/DejaVuSansCondensed-Bold.ttf",
-    "sha256": "38098d0b8edd8430a0f53fb2831b5d36037563a998a620d3c87a4d7591766d20",
-    "name": "DejaVu Sans Condensed Bold",
-    "license": "Bitstream Vera / DejaVu font license, see public/plates/fonts/LICENSE-DejaVu.txt"
+    "file": "/plates/fonts/BarlowSemiCondensed-SemiBold.ttf",
+    "sha256": "bd299f4bc5b44d30be8d42e9bad3a5df7d66af1cd55d0ed72a8b8916360a1424",
+    "name": "Barlow Semi Condensed SemiBold",
+    "license": "SIL Open Font License 1.1, see public/plates/fonts/LICENSE-Barlow-OFL.txt"
   },
+  "style": "printed",
   "charset": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
   "slots": 7,
-  "tile": { "width": 124, "height": 140, "seam": 4, "border": 16, "capHeight": 84 },
+  "tile": {
+    "width": 124,
+    "height": 140,
+    "seam": 4,
+    "border": 16,
+    "capHeight": 84
+  },
   "sampleText": "KOT2026",
   "colors": {
     "frame": "#26302d",

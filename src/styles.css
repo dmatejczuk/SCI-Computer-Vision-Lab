@@ -2333,7 +2333,28 @@ canvas {
 }
 .hub-parts {
   display: grid;
-  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.hub-parts .hub-part,
+.camera-hub.welcome .hub-parts .hub-part {
+  margin: 0;
+  min-height: 72px;
+  padding: 12px 14px;
+  align-items: flex-start;
+}
+.hub-parts .hub-part strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+.hub-parts .hub-part > span {
+  font-size: 18px;
+  line-height: 1.25;
+}
+@media (max-width: 760px) {
+  .hub-parts {
+    grid-template-columns: 1fr;
+  }
 }
 .hub-part strong {
   display: block;
@@ -2668,4 +2689,85 @@ canvas {
   color: var(--color-muted);
   text-underline-offset: 4px;
   padding: 10px 0;
+}
+
+/* ---------- Full-screen views (part 1: plate reader; facilitator: plate generator) ---------- */
+.app-shell.fullscreen-part {
+  max-width: none;
+  padding: 0;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Slim top bar shared by the full-screen parts. */
+.part-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
+  flex-wrap: wrap;
+}
+.part-brand {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  color: var(--color-primary);
+}
+.part-brand span {
+  color: var(--color-success);
+}
+.part-nav {
+  display: flex;
+  gap: 4px;
+}
+.part-nav button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.part-nav .part-number {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--color-soft);
+  color: var(--color-primary);
+}
+.part-nav button[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+.part-nav button[aria-pressed='true'] .part-number {
+  background: var(--color-surface);
+}
+.part-topbar-spacer {
+  flex: 1;
+}
+.role-instructor {
+  align-self: center;
+  margin-top: 40px;
+  font-size: 12px;
+  color: var(--color-muted);
+  text-underline-offset: 4px;
 }

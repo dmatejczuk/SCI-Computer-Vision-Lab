@@ -13,6 +13,8 @@ export interface Glyph {
 /** A loaded tile font that can draw single characters at a given capital-letter height. */
 export interface GlyphFont {
   name: string;
+  /** The parsed font, for drawing whole plates as outlines (printed plate style). */
+  font: opentype.Font;
   render(char: string, capHeight: number): Glyph;
 }
 
@@ -73,6 +75,7 @@ export function loadGlyphFont(buffer: ArrayBuffer): GlyphFont {
   const cache = new Map<string, Glyph>();
   return {
     name: font.names.fontFamily?.en ?? 'font',
+    font,
     render(char, capHeight) {
       const key = `${char}@${capHeight}`;
       const cached = cache.get(key);

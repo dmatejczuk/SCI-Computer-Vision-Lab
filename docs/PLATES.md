@@ -6,8 +6,19 @@ on a black background), then launch the plate reader, which shows the image befo
 processing and the text it read. UI labels are quoted in Polish as they appear in the app.
 
 After the camera hub, a station chooses **Część 1: Czytnik tablic** or **Część 2: AI Challenge**.
-The part switcher under the header changes parts without losing the camera source or a paired
-phone. **Nowa grupa** clears both parts.
+Part 1 uses the whole screen with one slim top bar (SCI mark, part switcher, levels and actions);
+the switcher changes parts without losing the camera source or a paired phone. **Nowa grupa**
+clears both parts. The plate generator is a facilitator tool: **Tryb prowadzącego** at the bottom
+of the first screen ("Jak chcesz dołączyć?"), `/?role=instructor`.
+
+## Camera image
+
+The reader never mirrors the image. Every frame is turned upright, cropped and scaled before the
+operations see it, and the camera preview (top right) shows exactly that frame:
+
+- a portrait image (a phone held upright) is cropped around its centre to a 4:3 landscape strip;
+- ⟲ / ⟳ rotate by a quarter turn (a phone held sideways), ⇋ flips left-right;
+- the setting stays for the next group (it belongs to the station's camera set-up).
 
 ## Levels
 
@@ -70,6 +81,9 @@ the normalised correlation in percent. Polish plate rules are not applied; confu
 
 Everything lives in one file, `src/features/plates/plates.config.json`:
 
+- `style`: `printed` for EU-style plates printed from the generator (default), `tiles` for the 3D
+  tile frame. **Znajdź tablicę** / **Wytnij i wyprostuj** and the generated level images follow it.
+
 - `font.file` and `font.sha256`: the tile font in `public/plates/fonts/` (TTF or OTF). The build
   (`npm run verify:plates`) checks the checksum and prints the new one on a mismatch.
 - `charset`: the characters printed on tiles; recognition only considers these.
@@ -80,9 +94,10 @@ Everything lives in one file, `src/features/plates/plates.config.json`:
 
 Templates, level images, practice images and the test plates are all generated from this file,
 so replacing the font or the character set needs no code change. The bundled fallback font is
-**DejaVu Sans Condensed Bold** (Bitstream Vera / DejaVu license, free to bundle, modify and print;
-see `public/plates/fonts/LICENSE-DejaVu.txt`). Replace it with the font used for the 3D tiles and
-measure the real tile proportions.
+**Barlow Semi Condensed SemiBold** (SIL Open Font License 1.1, free to bundle, modify and print;
+see `public/plates/fonts/LICENSE-Barlow-OFL.txt`): a DIN-like plate face whose 0/O, 1/I, 8/B and
+5/S stay apart in template matching (Barlow Condensed and Fjalla One mixed up 0 and O). The
+generator prints with the same font, so printed plates match the reader's templates.
 
 ## Technical notes
 
@@ -116,4 +131,31 @@ with a verdict and **Kopiuj wyniki** (JSON) for the room survey.
 | OpenCV.js (`@techstark/opencv-js`) | 4.12.0-release.1 | Apache-2.0 | Image operations in the worker |
 | React Flow (`@xyflow/react`, `@xyflow/system`) | 12.12.1 | MIT | Node editor (with d3-zoom/drag: ISC, d3-ease: BSD-3-Clause, zustand, classcat: MIT) |
 | opentype.js | 1.3.4 | MIT | Reading the tile font to draw templates and plate images |
-| DejaVu Sans Condensed Bold | 2.37 | Bitstream Vera / DejaVu | Fallback tile font |
+| Barlow Semi Condensed SemiBold | 1.408 | SIL OFL 1.1 | Plate font (reader templates and generator) |
+
+## Plate generator (facilitator mode)
+
+Random plate numbers in the Polish style (district code of 2–3 letters, a space, 7–8 characters in
+total; like real plates, the distinguishing part avoids B, D, I, O and Z), editable before
+printing, exported as a vector PDF:
+
+- EU-style plate: 520 × 114 mm proportions, black outline, one row of characters, and on the left
+  a blue band with the **SCI logo and "SCI"** instead of the EU stars and "PL".
+- A faint grey **"EDU" watermark** runs behind the characters, and under the plate's right edge
+  a small line reads "© <year> DM · For Educational Purposes Only · Not a valid registration
+  plate". The watermark is light enough for the reader to ignore it (tested with plain and
+  adaptive thresholding).
+- **Format wydruku**: **A5 w poziomie** (200 × 44 mm plate, two pieces per portrait A4 sheet,
+  with an optional dashed cut line between them) or **A4 w poziomie** (277 × 61 mm plate, one
+  landscape A4 sheet per plate).
+- **Do złożenia na pół** (default on): each piece is folded in half into a card that stands on
+  the table like a tent. The upper half stays blank, the plate is centred in the lower half and a
+  dotted line marks the fold. Turned off, the plate is centred in its piece.
+- **Podgląd kartki** shows the first sheet exactly as it goes into the PDF.
+- Each plate can be typed over (capitals, plate characters only, at most 8), re-rolled or removed.
+- The PDF is written in the browser (`src/features/generator/pdf.ts`): only filled outlines, so it
+  prints sharp at any size. Print at 100 % ("actual size").
+
+The logo is `src/features/generator/sciLogo.ts`, traced from the 1024 px logo SVG into outlines.
+Unit tests render printed plates and read them back through the reader (head-on, and after
+**Znajdź tablicę** + **Wytnij i wyprostuj**).
