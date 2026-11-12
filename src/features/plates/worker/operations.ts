@@ -1,5 +1,5 @@
 import type { BlockType, Point, SocketType } from '../graph/types';
-import { plateConfig } from '../plateConfig';
+import { plateAspect } from '../plateConfig';
 import type { CV, Mat } from './cv';
 import type { MatScope } from './scope';
 
@@ -80,7 +80,13 @@ function polygonArea(points: Point[]) {
 export function findPlateQuad(cv: CV, scope: MatScope, binary: Mat): Point[] | null {
   const contours = scope.track(new cv.MatVector());
   const hierarchy = scope.mat();
-  cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  // Close thin dark gaps first (seams between tiles, especially in shadow), so the plate
+  // stays one white area instead of falling apart into separate tiles.
+  const closed = scope.mat();
+  const k = Math.max(3, Math.round(binary.cols / 90) | 1);
+  const kernel = scope.track(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(k, k)));
+  cv.morphologyEx(binary, closed, cv.MORPH_CLOSE, kernel);
+  cv.findContours(closed, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
   const total = binary.rows * binary.cols;
   let best: { quad: Point[]; area: number } | null = null;
   for (let i = 0; i < contours.size(); i++) {
@@ -230,7 +236,7 @@ export const OPERATIONS: Partial<Record<BlockType, Op>> = {
     // A tilted plate looks narrower than it is. When the outline resembles our plate frame,
     // straighten it to the known proportions so characters keep their true shape.
     const measured = width / Math.max(1, height);
-    const known = plateConfig.plateAspect;
+    const known = plateAspect();
     const aspect = measured > known * 0.6 && measured < known * 1.6 ? known : measured;
     const outHeight = Math.max(24, Math.min(200, Math.round(height)));
     const outWidth = Math.max(48, Math.min(1000, Math.round(aspect * outHeight)));

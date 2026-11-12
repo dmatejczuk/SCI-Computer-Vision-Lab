@@ -28,8 +28,8 @@ export interface PlateSceneOptions {
   seed?: number;
 }
 
-/** Layout of the flat plate in "plate pixels". */
-export const TILE = { width: 100, height: 140, border: 16, seam: 4, capHeight: 88 };
+/** Layout of the flat plate in "plate pixels" (one config unit = one pixel). */
+const TILE = plateConfig.tile;
 
 const hex = (color: string): [number, number, number] => [
   parseInt(color.slice(1, 3), 16),

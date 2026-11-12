@@ -2,7 +2,9 @@ import type { SessionManager } from '../../services/SessionManager';
 import { VisionClient, WorkerError, grabFrame } from './VisionClient';
 import { connect, createNode } from './graph/graph';
 import type { BlockType, Graph } from './graph/types';
+import { levelById, type LevelId } from './levels';
 import { plateConfig } from './plateConfig';
+import { cleanPlate } from './recognition/compare';
 import type { PlateSceneOptions } from './recognition/plateImage';
 import { Voter, type VotedCharacter } from './recognition/recognize';
 import {
@@ -34,6 +36,13 @@ export function chainGraph(types: BlockType[]): Graph {
 }
 
 export interface PlateState {
+  level: LevelId;
+  /** How many hints of the current level are visible. */
+  hintsShown: number;
+  /** Levels 2–3: use the generated practice image instead of the camera. */
+  practice: boolean;
+  /** Levels whose plate was read completely and correctly. */
+  completed: LevelId[];
   /** Node editor or the plate reader screen. */
   view: 'editor' | 'reader';
   /** The plate the student assembled, typed on the reader screen. */
@@ -59,18 +68,22 @@ export interface PlateState {
 }
 
 const initial = (): PlateState => ({
+  level: 1,
+  hintsShown: 0,
+  practice: false,
+  completed: [],
   view: 'editor',
   myPlate: '',
-  graph: chainGraph([]),
+  graph: levelById(1).start(),
   canUndo: false,
   canRedo: false,
   preview: null,
   status: 'idle',
   error: null,
   frozen: false,
-  sample: null,
+  sample: levelById(1).sample,
   reading: [],
-  expected: plateConfig.slots,
+  expected: levelById(1).sample!.text.length,
   workWidth: FULL_WIDTH,
   fps: 0,
   passMs: 0,
@@ -204,11 +217,62 @@ export class PlateSession {
   }
 
   /** Uses a generated plate photo (or the camera again with null). */
-  setSample(sample: PlateState['sample'], expected = sample?.text.length ?? plateConfig.slots) {
+  private setSample(sample: PlateState['sample']) {
     this.voter.clear();
-    this.patch({ sample, expected, reading: [] });
+    this.patch({ sample, reading: [] });
+    this.patch({ expected: this.expectedCount() });
     this.session.setPlatesLive(this.running && this.live);
     this.invalidate();
+  }
+
+  /** Characters a full reading should have: the built-in plate, the typed plate or the slots. */
+  private expectedCount() {
+    const typed = cleanPlate(this.state.myPlate);
+    return this.state.sample?.text.length ?? (typed.length || plateConfig.slots);
+  }
+
+  private levelGraphs = new Map<LevelId, Graph>();
+
+  /** Switches level; each level keeps its own graph while the group works. */
+  setLevel(id: LevelId) {
+    if (id === this.state.level) return;
+    this.levelGraphs.set(this.state.level, this.state.graph);
+    const level = levelById(id);
+    const start = level.start();
+    this.startGraph = start;
+    this.past = [];
+    this.future = [];
+    this.lastChange = null;
+    this.patch({
+      level: id,
+      hintsShown: 0,
+      practice: false,
+      view: 'editor',
+      preview: null,
+      frozen: false,
+      graph: this.levelGraphs.get(id) ?? start,
+      canUndo: false,
+      canRedo: false,
+    });
+    this.setSample(level.sample);
+  }
+
+  /** Levels 2–3: practise on a generated image or use the camera. */
+  setPractice(practice: boolean) {
+    const level = levelById(this.state.level);
+    if (!level.practice) return;
+    this.patch({ practice, frozen: false });
+    this.setSample(practice ? level.practice : null);
+  }
+
+  showHint() {
+    const total = levelById(this.state.level).hints.length;
+    this.patch({ hintsShown: Math.min(total, this.state.hintsShown + 1) });
+  }
+
+  /** Facilitator: replaces the graph with the level's reference solution (can be undone). */
+  loadReference() {
+    this.apply(levelById(this.state.level).reference());
   }
 
   /**
@@ -326,6 +390,11 @@ export class PlateSession {
     const key = (list: VotedCharacter[]) =>
       list.map((c) => `${c.char}${c.confidence}${c.alternatives.map((a) => a.char)}`).join();
     if (key(reading) !== key(this.state.reading)) this.patch({ reading });
+    // The level counts as solved once the reader reads the whole plate correctly.
+    const target = this.state.sample?.text ?? cleanPlate(this.state.myPlate);
+    const text = reading.map((c) => c.char).join('');
+    if (target && text === target && !this.state.completed.includes(this.state.level))
+      this.patch({ completed: [...this.state.completed, this.state.level] });
   }
 
   setView(view: PlateState['view']) {
@@ -336,6 +405,7 @@ export class PlateSession {
 
   setMyPlate(myPlate: string) {
     this.patch({ myPlate: myPlate.toUpperCase().slice(0, 12) });
+    this.patch({ expected: this.expectedCount() });
   }
 
   /** The reader makes sense once the Output block finds a plausible number of characters. */
@@ -380,6 +450,7 @@ export class PlateSession {
     this.past = [];
     this.future = [];
     this.voter.clear();
+    this.levelGraphs.clear();
     this.lastChange = null;
     this.dirty = true;
     this.state = initial();

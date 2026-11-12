@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { SessionManager } from '../../services/SessionManager';
 import { plates as text } from '../../i18n/plates';
-import { BLOCKS } from './graph/nodes';
-import type { BlockType } from './graph/types';
 import { NodeEditor } from './editor/NodeEditor';
 import { OutputStatus } from './editor/OutputStatus';
+import { LevelBar, LevelTabs } from './LevelBar';
+import { levelById } from './levels';
 import { plateConfig } from './plateConfig';
 import { ReaderView } from './reader/ReaderView';
 import { plateSessionFor } from './PlateSession';
@@ -16,8 +16,6 @@ if (typeof FontFace !== 'undefined')
     .load()
     .then((face) => document.fonts.add(face))
     .catch(() => {});
-
-const ALL_BLOCKS = (Object.keys(BLOCKS) as BlockType[]).filter((type) => !BLOCKS[type].fixed);
 
 /** Part 1 of the workshop: the plate reader (node editor and reader screens). */
 export function PlatesView({ session }: { session: SessionManager }) {
@@ -38,10 +36,8 @@ export function PlatesView({ session }: { session: SessionManager }) {
   return (
     <main className="plates" aria-labelledby="plates-title">
       <div className="plates-toolbar">
-        <div>
-          <span className="eyebrow">{text.parts.first}</span>
-          <h1 id="plates-title">{text.title}</h1>
-        </div>
+        <h1 id="plates-title">{text.title}</h1>
+        {state.view === 'editor' && <LevelTabs plates={plates} />}
         <div className="plates-actions">
           {state.view === 'editor' ? (
             <>
@@ -87,13 +83,19 @@ export function PlatesView({ session }: { session: SessionManager }) {
           {state.error === 'csp' ? text.perf.csp : text.visionFailed}
         </p>
       )}
+      {state.view === 'editor' && <LevelBar plates={plates} />}
       <div className={`plates-workspace view-${state.view}`}>
         {state.view === 'editor' ? (
-          <NodeEditor plates={plates} blocks={ALL_BLOCKS} outputStatus={outputStatus} />
+          <NodeEditor
+            key={state.level}
+            plates={plates}
+            blocks={levelById(state.level).blocks}
+            outputStatus={outputStatus}
+          />
         ) : (
           <ReaderView plates={plates} />
         )}
-        <figure className="camera-dock">
+        <figure className="camera-dock" hidden={!!state.sample}>
           {/* No mirroring here: a mirrored plate would show reversed characters. */}
           <video ref={video} autoPlay muted playsInline aria-label={text.cameraLabel} />
           {state.frozen && <span className="plates-frozen-badge">{text.frozenBadge}</span>}

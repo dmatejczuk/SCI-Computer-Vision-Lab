@@ -104,3 +104,43 @@ describe('editor history', () => {
     expect(plates.getSnapshot().graph.nodes.map((n) => n.type)).toEqual(['camera', 'output']);
   });
 });
+
+describe('levels in the plate session', () => {
+  it('keeps a graph per level, switches the image source and resets on New group', async () => {
+    const { PlateSession, chainGraph } = await import('../src/features/plates/PlateSession');
+    const session = new SessionManager();
+    const plates = new PlateSession(session);
+    expect(plates.getSnapshot().sample?.text).toBe('KOT2026');
+    expect(plates.getSnapshot().expected).toBe(7);
+    const solved = chainGraph(['grayscale', 'threshold', 'invert']);
+    plates.apply(solved);
+    plates.setLevel(2);
+    expect(plates.getSnapshot().sample).toBeNull();
+    expect(plates.getSnapshot().graph.nodes).toHaveLength(2);
+    expect(plates.getSnapshot().canUndo).toBe(false);
+    plates.setPractice(true);
+    expect(plates.getSnapshot().sample?.text).toBe('WX4821');
+    expect(plates.getSnapshot().expected).toBe(6);
+    plates.setPractice(false);
+    plates.setMyPlate('ab 12');
+    expect(plates.getSnapshot().expected).toBe(4);
+    plates.showHint();
+    expect(plates.getSnapshot().hintsShown).toBe(1);
+    plates.setLevel(1);
+    expect(plates.getSnapshot().graph).toBe(solved);
+    expect(plates.getSnapshot().hintsShown).toBe(0);
+    plates.loadReference();
+    expect(plates.getSnapshot().graph.nodes.map((n) => n.type)).toEqual([
+      'camera',
+      'grayscale',
+      'threshold',
+      'invert',
+      'output',
+    ]);
+    await session.resetSession();
+    plates.reset();
+    expect(plates.getSnapshot().level).toBe(1);
+    expect(plates.getSnapshot().myPlate).toBe('');
+    expect(plates.getSnapshot().completed).toEqual([]);
+  });
+});

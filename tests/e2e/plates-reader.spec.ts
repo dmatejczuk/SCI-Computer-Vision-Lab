@@ -22,6 +22,7 @@ test('plate reader reads a plate from the camera and compares it with "Moja tabl
   await page.goto('/?role=station');
   await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
   await page.getByRole('button', { name: /Część 1\s*Czytnik tablic/ }).click({ timeout: 60000 });
+  await page.getByRole('tab', { name: /Poziom 2/ }).click();
   const launch = page.getByRole('button', { name: /Uruchom czytnik tablic/ });
   await expect(launch).toBeDisabled();
   for (const name of ['Odcienie szarości', 'Progowanie', 'Odwróć kolory'])
