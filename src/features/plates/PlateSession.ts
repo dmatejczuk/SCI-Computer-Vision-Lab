@@ -32,6 +32,10 @@ export function chainGraph(types: BlockType[]): Graph {
 
 export interface PlateState {
   graph: Graph;
+  canUndo: boolean;
+  canRedo: boolean;
+  /** Node shown in the large preview window. */
+  preview: string | null;
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: 'csp' | 'failed' | null;
   frozen: boolean;
@@ -42,7 +46,10 @@ export interface PlateState {
 }
 
 const initial = (): PlateState => ({
-  graph: chainGraph(['grayscale', 'threshold', 'invert']),
+  graph: chainGraph([]),
+  canUndo: false,
+  canRedo: false,
+  preview: null,
   status: 'idle',
   error: null,
   frozen: false,
@@ -79,7 +86,12 @@ export class PlateSession {
   private generation = 0;
   private recent: number[] = [];
   private lastPass = 0;
+  private past: Graph[] = [];
+  private future: Graph[] = [];
+  private lastChange: { key: string; time: number } | null = null;
   latest: ProcessResult | null = null;
+  /** The graph "Wyczyść" goes back to (the level's starting graph). */
+  protected startGraph: Graph = this.state.graph;
 
   constructor(private session: SessionManager) {}
 
@@ -153,8 +165,6 @@ export class PlateSession {
     this.timer = setTimeout(() => void this.tick(), wait);
   }
 
-  /** Node shown in the large preview window, if any. */
-  protected previewNode: string | null = null;
   /** The reader screen needs full-size input and output images. */
   protected fullImages = false;
 
@@ -164,15 +174,60 @@ export class PlateSession {
       options: {
         workWidth: this.state.workWidth,
         thumbWidth: THUMB_WIDTH,
-        preview: this.previewNode,
+        preview: this.state.preview,
         full: this.fullImages,
       },
     };
   }
 
-  setGraph(graph: Graph) {
-    if (graph === this.state.graph) return;
-    this.patch({ graph });
+  private setGraph(graph: Graph) {
+    this.patch({ graph, canUndo: this.past.length > 0, canRedo: this.future.length > 0 });
+    this.invalidate();
+  }
+
+  /**
+   * Applies an edit and records it for undo. Edits with the same `key` that follow each
+   * other quickly (dragging a slider) form one undo step.
+   */
+  apply(graph: Graph, key?: string) {
+    const current = this.state.graph;
+    if (graph === current) return;
+    const now = performance.now();
+    const merge = key && this.lastChange?.key === key && now - this.lastChange.time < 1500;
+    if (!merge) {
+      this.past = [...this.past.slice(-99), current];
+    }
+    this.lastChange = key ? { key, time: now } : null;
+    this.future = [];
+    this.setGraph(graph);
+  }
+
+  undo() {
+    const previous = this.past.at(-1);
+    if (!previous) return;
+    this.past = this.past.slice(0, -1);
+    this.future = [...this.future, this.state.graph];
+    this.lastChange = null;
+    this.setGraph(previous);
+  }
+
+  redo() {
+    const next = this.future.at(-1);
+    if (!next) return;
+    this.future = this.future.slice(0, -1);
+    this.past = [...this.past, this.state.graph];
+    this.lastChange = null;
+    this.setGraph(next);
+  }
+
+  /** "Wyczyść": back to the starting graph (can be undone). */
+  clearGraph() {
+    this.apply(this.startGraph);
+  }
+
+  /** Opens (or closes with null) the large preview of one block. */
+  setPreview(node: string | null) {
+    this.patch({ preview: node });
     this.invalidate();
   }
 
@@ -268,8 +323,12 @@ export class PlateSession {
     if (this.latest) resultBitmaps(this.latest).forEach((bitmap) => bitmap.close());
     this.latest = null;
     this.recent = [];
+    this.past = [];
+    this.future = [];
+    this.lastChange = null;
     this.dirty = true;
     this.state = initial();
+    this.startGraph = this.state.graph;
     this.listeners.forEach((listener) => listener());
   }
 }

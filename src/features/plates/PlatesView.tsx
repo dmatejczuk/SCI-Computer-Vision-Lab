@@ -1,9 +1,13 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { SessionManager } from '../../services/SessionManager';
 import { plates as text } from '../../i18n/plates';
-import { BitmapCanvas } from './BitmapCanvas';
+import { BLOCKS } from './graph/nodes';
+import type { BlockType } from './graph/types';
+import { NodeEditor } from './editor/NodeEditor';
 import { plateSessionFor } from './PlateSession';
 import './plates.css';
+
+const ALL_BLOCKS = (Object.keys(BLOCKS) as BlockType[]).filter((type) => !BLOCKS[type].fixed);
 
 /** Part 1 of the workshop: the plate reader (node editor and reader screens). */
 export function PlatesView({ session }: { session: SessionManager }) {
@@ -19,6 +23,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
       session.leavePlates();
     };
   }, [session, plates]);
+  const t = text.editor;
   return (
     <main className="plates" aria-labelledby="plates-title">
       <div className="plates-toolbar">
@@ -27,6 +32,13 @@ export function PlatesView({ session }: { session: SessionManager }) {
           <h1 id="plates-title">{text.title}</h1>
         </div>
         <div className="plates-actions">
+          <button disabled={!state.canUndo} onClick={() => plates.undo()} title="Ctrl+Z">
+            ↶ {t.undo}
+          </button>
+          <button disabled={!state.canRedo} onClick={() => plates.redo()} title="Ctrl+Y">
+            ↷ {t.redo}
+          </button>
+          <button onClick={() => plates.clearGraph()}>{t.clear}</button>
           <button
             aria-pressed={state.frozen}
             disabled={state.status !== 'ready'}
@@ -46,24 +58,14 @@ export function PlatesView({ session }: { session: SessionManager }) {
           {state.error === 'csp' ? text.perf.csp : text.visionFailed}
         </p>
       )}
-      <div className="plates-stage">
-        <figure className="plates-camera">
+      <div className="plates-workspace">
+        <NodeEditor plates={plates} blocks={ALL_BLOCKS} />
+        <figure className="camera-dock">
           {/* No mirroring here: a mirrored plate would show reversed characters. */}
           <video ref={video} autoPlay muted playsInline aria-label={text.cameraLabel} />
           {state.frozen && <span className="plates-frozen-badge">{text.frozenBadge}</span>}
-          <figcaption>{text.cameraLabel}</figcaption>
-        </figure>
-        <figure className="plates-processed">
-          <BitmapCanvas
-            plates={plates}
-            pick={(result) => {
-              const output = state.graph.nodes.find((node) => node.type === 'output');
-              return output ? result.nodes[output.id]?.thumbnail : undefined;
-            }}
-            label={text.workerImage}
-          />
           <figcaption>
-            {text.workerImage} · {state.fps ? state.fps.toFixed(0) : '–'} {text.fpsUnit}
+            {text.cameraLabel} · {state.fps ? state.fps.toFixed(0) : '–'} {text.fpsUnit}
           </figcaption>
         </figure>
       </div>

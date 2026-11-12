@@ -43,40 +43,6 @@ main.plates[hidden] {
   padding: 40px 0;
   color: var(--color-muted);
 }
-.plates-stage {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.plates-stage figure {
-  margin: 0;
-  position: relative;
-  background: #0d1715;
-  border-radius: 6px;
-  overflow: hidden;
-  min-height: 160px;
-}
-.plates-stage video,
-.plates-stage canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 62vh;
-  object-fit: contain;
-  /* The plate module never mirrors the camera image. */
-  transform: none;
-}
-.plates-stage figcaption {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: #fff;
-  background: rgb(0 0 0 / 55%);
-  padding: 3px 8px;
-  border-radius: 3px;
-}
 .plates-frozen-badge {
   position: absolute;
   top: 10px;
@@ -88,8 +54,392 @@ main.plates[hidden] {
   padding: 4px 10px;
   border-radius: 3px;
 }
-@media (max-width: 900px) {
-  .plates-stage {
-    grid-template-columns: 1fr;
-  }
+
+/* ---------- Node editor ---------- */
+.plates-workspace {
+  position: relative;
+  flex: 1;
+  min-height: 540px;
+  display: flex;
+}
+.node-editor {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface);
+  min-height: 540px;
+  height: calc(100vh - 290px);
+}
+.palette {
+  border-right: 1px solid var(--color-line);
+  padding: 12px;
+  overflow-y: auto;
+  background: var(--color-background);
+}
+.palette h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.palette h3 {
+  margin: 14px 0 6px;
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.palette-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+.palette ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.palette-item {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: grab;
+  border-left: 4px solid var(--block-accent, var(--color-line));
+}
+.palette-item strong {
+  display: block;
+  font-size: 13px;
+}
+.palette-item small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+.block-image {
+  --block-accent: #e2b93b;
+}
+.block-binary {
+  --block-accent: #6f7d79;
+}
+.block-plate {
+  --block-accent: #8e5fd6;
+}
+.block-view,
+.block-source {
+  --block-accent: var(--color-success);
+}
+.block-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 4px;
+  background: var(--color-soft);
+  font-size: 15px;
+}
+.node-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+.node-canvas .react-flow {
+  --xy-background-color: #f2f4ee;
+}
+
+/* Block card */
+.block-card {
+  width: 196px;
+  background: var(--color-surface);
+  border: 1px solid #c9d0c6;
+  border-top: 4px solid var(--block-accent, var(--color-line));
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgb(23 47 44 / 10%);
+  font-size: 12px;
+  color: var(--color-text);
+}
+.block-card.selected {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.block-card.has-problem {
+  border-color: var(--color-danger);
+}
+.block-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 4px 8px;
+}
+.block-head strong {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.block-delete {
+  min-height: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-muted);
+}
+.block-inputs {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--color-muted);
+}
+.block-thumb {
+  position: relative;
+  margin: 0 8px;
+  background: #0d1715;
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 60px;
+}
+.block-thumb canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: zoom-in;
+}
+.block-zoom {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  min-height: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.8;
+}
+.block-param,
+.block-toggle {
+  display: block;
+  padding: 6px 8px 0;
+}
+.block-param span {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.block-param input {
+  width: 100%;
+  margin: 2px 0 0;
+  accent-color: var(--color-primary);
+}
+.block-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.block-info {
+  margin: 4px 8px 0;
+  font-size: 11px;
+  color: var(--color-success);
+  font-weight: 600;
+}
+.block-problem {
+  position: relative;
+  margin: 8px 6px 4px;
+  padding: 6px 8px;
+  background: #fff0ec;
+  border: 1px solid var(--color-danger);
+  border-radius: 6px;
+  color: #7d2418;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.block-problem::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: -6px;
+  border: 5px solid transparent;
+  border-top: 0;
+  border-bottom-color: var(--color-danger);
+}
+.block-out-type {
+  display: block;
+  text-align: right;
+  padding: 4px 10px 6px;
+  font-size: 10px;
+  color: var(--color-muted);
+}
+.block-card > :last-child:not(.socket) {
+  margin-bottom: 6px;
+}
+
+/* Sockets colored by data type */
+.socket.react-flow__handle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #1d2b28;
+}
+.socket-color {
+  --socket: #f2c230;
+  background: #f2c230 !important;
+}
+.socket-gray {
+  --socket: #9aa3a0;
+  background: #9aa3a0 !important;
+}
+.socket-binary {
+  --socket: #ffffff;
+  background: #ffffff !important;
+}
+.socket-region {
+  --socket: #9b6bdf;
+  background: #9b6bdf !important;
+}
+.socket-unknown {
+  background: #d4d8d2 !important;
+  border-style: dashed !important;
+}
+.react-flow__handle.connectingto:not(.valid) {
+  box-shadow: 0 0 0 4px rgb(183 67 53 / 50%);
+}
+
+/* Wires */
+.react-flow__edge-path.wire {
+  stroke-width: 3.5;
+}
+.wire-color {
+  stroke: #e2b11c !important;
+}
+.wire-gray {
+  stroke: #8b9592 !important;
+}
+.wire-binary {
+  stroke: #1d2b28 !important;
+}
+.wire-region {
+  stroke: #9b6bdf !important;
+}
+.wire-unknown {
+  stroke: #c5ccc3 !important;
+}
+.wire-problem {
+  stroke: var(--color-danger) !important;
+  stroke-dasharray: 8 6;
+}
+.react-flow__edge.selected .wire,
+.react-flow__edge.drop-target .wire {
+  stroke-width: 6;
+  filter: drop-shadow(0 0 4px rgb(216 239 112 / 90%));
+}
+.wire-bubble {
+  position: absolute;
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  background: #fff0ec;
+  border: 1px solid var(--color-danger);
+  border-radius: 14px;
+  padding: 3px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #7d2418;
+}
+.wire-bubble span {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: #fff;
+  font-weight: 800;
+}
+.wire-bubble p {
+  margin: 0;
+  display: none;
+}
+.wire-bubble:hover,
+.wire-bubble:focus {
+  z-index: 10;
+}
+.wire-bubble:hover p,
+.wire-bubble:focus p {
+  display: block;
+}
+.editor-bubble {
+  position: absolute;
+  z-index: 20;
+  max-width: 300px;
+  transform: translate(-50%, calc(-100% - 14px));
+  background: var(--color-primary);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
+  cursor: pointer;
+}
+.editor-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-bottom: 0;
+  border-top-color: var(--color-primary);
+}
+
+/* Camera dock */
+.camera-dock {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  width: 200px;
+  margin: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0d1715;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
+}
+.camera-dock video {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* The plate module never mirrors the camera image. */
+  transform: none;
+}
+.camera-dock figcaption {
+  font-size: 10px;
+  color: #fff;
+  padding: 4px 8px;
+}
+.plates-preview canvas {
+  display: block;
+  max-width: min(90vw, 960px);
+  max-height: 70vh;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: #0d1715;
 }

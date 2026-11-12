@@ -62,3 +62,45 @@ describe('working resolution', () => {
     expect(adaptWidth(REDUCED_WIDTH, Array(5).fill(5))).toBe(FULL_WIDTH);
   });
 });
+
+describe('editor history', () => {
+  it('undoes and redoes edits and merges quick slider moves into one step', async () => {
+    const { PlateSession, chainGraph } = await import('../src/features/plates/PlateSession');
+    const plates = new PlateSession(new SessionManager());
+    const start = plates.getSnapshot().graph;
+    const one = chainGraph(['grayscale']);
+    plates.apply(one);
+    expect(plates.getSnapshot().canUndo).toBe(true);
+    const node = one.nodes[1];
+    const withBlur = chainGraph(['grayscale', 'blur']);
+    plates.apply(withBlur);
+    const blur = withBlur.nodes[2];
+    const slide = (strength: number) => {
+      const graph = plates.getSnapshot().graph;
+      plates.apply(
+        {
+          ...graph,
+          nodes: graph.nodes.map((n) => (n.id === blur.id ? { ...n, params: { strength } } : n)),
+        },
+        `param:${blur.id}:strength`,
+      );
+    };
+    slide(3);
+    slide(4);
+    slide(5);
+    plates.undo();
+    expect(plates.getSnapshot().graph).toBe(withBlur);
+    plates.undo();
+    expect(plates.getSnapshot().graph).toBe(one);
+    expect(plates.getSnapshot().graph.nodes[1]).toBe(node);
+    plates.redo();
+    expect(plates.getSnapshot().graph).toBe(withBlur);
+    plates.clearGraph();
+    expect(plates.getSnapshot().graph).toBe(start);
+    plates.undo();
+    expect(plates.getSnapshot().graph).toBe(withBlur);
+    plates.reset();
+    expect(plates.getSnapshot().canUndo).toBe(false);
+    expect(plates.getSnapshot().graph.nodes.map((n) => n.type)).toEqual(['camera', 'output']);
+  });
+});

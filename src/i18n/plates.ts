@@ -127,6 +127,28 @@ export const plates = {
     noPlate: 'Nie widzę tablicy.',
     failed: 'Ten blok nie zadziałał na tym obrazie.',
   },
+  editor: {
+    palette: 'Bloki',
+    paletteHint:
+      'Kliknij blok, aby wstawić go przed „Wynik”. Możesz też przeciągnąć go na linię między blokami.',
+    categories: {
+      image: 'Obraz',
+      binary: 'Czarno-białe',
+      plate: 'Tablica',
+      view: 'Podgląd',
+    },
+    undo: 'Cofnij',
+    redo: 'Ponów',
+    clear: 'Wyczyść',
+    remove: 'Usuń blok',
+    enlarge: 'Powiększ (dwuklik)',
+    thumbnail: 'Miniatura',
+    preview: 'Podgląd',
+    noImage: 'brak obrazu',
+    autoLevel: 'Wybrany próg',
+    shapes: 'Kształty',
+    canvas: 'Plansza z blokami',
+  },
   perf: {
     title: 'Test wydajności czytnika tablic',
     open: 'Test wydajności czytnika tablic',
