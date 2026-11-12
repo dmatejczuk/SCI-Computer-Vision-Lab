@@ -7,7 +7,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. Localhost is a secure-context exception for camera development. An HTTP LAN IP is not a production camera solution. Camera permission is requested only after selecting **Kamera komputera** in the setup hub. Check the preview, then select **Przejdź do AI Challenge**.
+Open `http://localhost:5173`. Localhost is a secure-context exception for camera development. An HTTP LAN IP is not a production camera solution. Camera permission is requested only after selecting **Kamera komputera** in the setup hub. Check the preview, then select **Część 1: Czytnik tablic** or **Część 2: Przejdź do AI Challenge**.
 
 ```sh
 npm run typecheck
@@ -64,6 +64,11 @@ See [architecture](ARCHITECTURE.md) for the state machine and ownership rules.
 - `src/features/prediction`: serialized inference loop and OPEN/FIST transition controller.
 - `src/features/game`: Phaser runner and typed React/game bridge.
 - `src/features/instructor`: diagnostics and settings.
+- `src/features/plates`: part 1, the plate reader. `PlatesView` (screen), `PlateSession` (state,
+  frame loop), `graph/` (block registry and graph engine), `editor/` (React Flow node editor),
+  `worker/` (OpenCV.js worker, operations, protocol), `recognition/` (font rendering, plate
+  images, segmentation, templates, voting), `reader/`, `levels.ts`, `plates.config.json` (font,
+  character set, plate geometry). Copy in `src/i18n/plates.ts`. See [PLATES.md](PLATES.md).
 - `src/i18n/pl.ts`: Polish UI copy. No translation framework is required to add another dictionary later.
 - `src/config/settings.ts`: sample counts, thresholds, inference frequency and game constants.
 - `src/styles.css`: design tokens and desktop-first layout.
@@ -73,6 +78,22 @@ The square, mirrored preview matches the square, mirrored image given to the ext
 The gesture controller requires two consecutive confident OPEN predictions to arm, then two confident FIST predictions to emit exactly one jump. Defaults are OPEN 0.82, FIST 0.80, 15 predictions/s. The game runs independently at display refresh rate. Holding FIST cannot repeatedly jump; SPACE is a separate emergency input. A jump is accepted only while the character is on the ground. Backgrounding the tab or losing the camera pauses the game and disarms gestures.
 
 This is a binary image classifier, not a hand detector. A missing hand, clothing or background may still produce a confident class. Keep the hand large in the frame, vary position and background during capture, and discuss incorrect predictions as part of the exercise. Low confidence breaks a gesture streak. Thresholds are starting values, not a claim of measured gesture latency on school hardware.
+
+## Plate reader assets and tests
+
+`npm run verify:plates` (part of `npm run build`) checks the bundled OpenCV.js file
+(`@techstark/opencv-js`, pinned, see `src/features/plates/worker/opencv.checksum.json`) and the
+tile font named in `plates.config.json`. `scripts/opencv-patch.ts` is applied by Vite (build and
+dev pre-bundling) and by the unit tests, so tests run the same CSP-safe OpenCV.js as the app.
+
+Unit tests: `tests/PlateGraph.test.ts` (graph engine), `tests/PlateOperations.test.ts` (OpenCV
+blocks, cache, `cv.Mat` release), `tests/PlateRecognition.test.ts` (generated plate photos:
+character set, confusable pairs, tilt, shadow, noise, dirt, voting), `tests/PlateLevels.test.ts`
+(reference solutions) and `tests/PlateSession.test.ts`. End-to-end: `tests/e2e/plates*.spec.ts`;
+`plates-reader.spec.ts` writes a generated plate video (`tests/e2e/helpers/plateVideo.ts`) and
+starts Chromium with `--use-file-for-fake-video-capture`. `plates-perf.spec.ts` prints the phase-0
+benchmark; run it against `npm run preview` (`E2E_BASE_URL=http://localhost:4173`) to measure the
+production build with the production CSP.
 
 ## Packaged model and offline operation
 

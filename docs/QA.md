@@ -95,6 +95,35 @@ Ask: Which data did your model see? What changed for the second person? Did more
 - In the challenge, change background/pose, freeze, select the correct human label, add/retrain
   and retest. Confirm sample count increases only for that label; at the cap adding is disabled.
 
+## Plate reader (part 1)
+
+Record the workstation, browser, camera, light and tile material (3D print or paper).
+
+- [ ] Hub: **Część 1: Czytnik tablic** becomes active once the camera shows an image; **Część 2**
+      still works as before; switching parts keeps the same camera stream and the paired phone.
+- [ ] The plate preview and the reader's camera image are **not mirrored** (text reads normally).
+- [ ] Instructor panel → **Test wydajności czytnika tablic** on every station: ≥ 10 fps at 640 px
+      (verdict "Wynik dobry"), `cv.Mat` = 0. Copy the JSON results for the record.
+- [ ] Level 1: a new student solves it in ≤ 5 minutes without help (test with 2–3 people).
+- [ ] Editor: click to add, drag onto a wire, drag a loose block onto a wire, a refused connection
+      shows a bubble, red wire on type mismatch, Ctrl+Z / Ctrl+Y, Delete, **Wyczyść**, large
+      preview, sliders update thumbnails live, **Zatrzymaj klatkę** / **Wróć do obrazu na żywo**.
+- [ ] Level 2 with the real 3D tiles in good light and the reference graph: ≥ 95% of characters
+      read correctly. Note which characters fail and their alternatives.
+- [ ] Level 3: tilted plate with **Znajdź tablicę** + **Wytnij i wyprostuj**; half the plate in
+      shadow with **Progowanie adaptacyjne**; small dirt with **Otwarcie**.
+- [ ] Reader: before/after images, plate outline, boxes, percentages and alternatives,
+      **Moja tablica** highlights mistakes, **← Wróć do edytora** keeps the graph.
+- [ ] Phone camera: the same on levels 2–3 with a paired phone.
+- [ ] Camera loss on levels 2–3 shows **Rozłączono kamerę** / **Rozłączono urządzenie**; level 1
+      (built-in photo) keeps working.
+- [ ] 10 minutes of continuous live use on level 3: instructor panel shows `cv.Mat` 0 / n and the
+      OpenCV memory value does not grow.
+- [ ] **Nowa grupa** clears the graph, levels, hints, the read text and **Moja tablica**.
+- [ ] Offline: disconnect the Internet (keep the LAN) and reload; part 1 loads OpenCV.js and the
+      font from the local server.
+- [ ] 1366×768: toolbar, level bar and editor fit; the reader screen scrolls only vertically.
+
 ## Phone camera acceptance
 
 Run the automated signaling, freshness and real-WebRTC tests, then complete the physical Android,

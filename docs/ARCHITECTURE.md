@@ -19,6 +19,27 @@ WAITING_FOR_OPEN -> two confident OPEN samples -> ARMED -> two confident FIST sa
 
 React owns the lifetime of a Phaser instance. A typed GameController bridges jump, score, FPS, pause and game-over events. Phaser owns movement, gravity, collision, obstacles and rendering. Stable OPEN is needed again on every new round. SPACE also emits a jump without changing the gesture controller. Collisions consume a round, never the dataset. Obstacle intervals allow the full jump arc; the opening seconds are clear.
 
+## Plate reader (part 1)
+
+After the camera hub the station shows either the gesture workshop or the plate reader. The
+plate module (`src/features/plates`) is a lazily loaded chunk without TFJS or Phaser.
+`SessionManager` stays the owner of the video source: `enterPlates()` hands frame monitoring to
+the module's own, unmirrored video element and pauses gesture prediction; `leavePlates()`
+restores it; `onReset()` lets the module clear itself on group reset. `PlateSession` holds the
+module state in RAM (level, graph per level, undo history, frozen frame flag, reading, typed
+plate) and runs the frame loop: at most one frame in flight, at most 15 Hz, a still image is only
+reprocessed when something changed.
+
+The node graph is plain JSON validated and ordered by `graph/graph.ts` (socket types, cycle and
+type checks, insertion into wires, signatures for caching). `worker/vision.worker.ts` is a module
+Web Worker with OpenCV.js 4.12: it executes the runnable blocks in topological order inside a
+`MatScope` released in `finally`, caches results for a frozen frame, renders thumbnails as
+transferred ImageBitmaps, and reads the Output image with template matching
+(`recognition/`). Templates, the level 1 photo and practice images are drawn from the tile font
+configured in `plates.config.json` with opentype.js. The page CSP needs `'wasm-unsafe-eval'`;
+`scripts/opencv-patch.ts` removes OpenCV.js's `new Function()` code generation at build time so
+`'unsafe-eval'` is not needed. See [PLATES.md](PLATES.md).
+
 ## Deployment
 
 Multi-stage Node build -> Caddy static server. Default Compose publishes loopback TCP 80 and
