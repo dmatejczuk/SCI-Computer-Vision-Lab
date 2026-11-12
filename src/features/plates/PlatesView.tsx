@@ -54,7 +54,14 @@ export function PlatesView({ session }: { session: SessionManager }) {
           <figcaption>{text.cameraLabel}</figcaption>
         </figure>
         <figure className="plates-processed">
-          <BitmapCanvas plates={plates} pick={(result) => result.source} label={text.workerImage} />
+          <BitmapCanvas
+            plates={plates}
+            pick={(result) => {
+              const output = state.graph.nodes.find((node) => node.type === 'output');
+              return output ? result.nodes[output.id]?.thumbnail : undefined;
+            }}
+            label={text.workerImage}
+          />
           <figcaption>
             {text.workerImage} · {state.fps ? state.fps.toFixed(0) : '–'} {text.fpsUnit}
           </figcaption>

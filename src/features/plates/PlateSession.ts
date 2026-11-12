@@ -1,6 +1,13 @@
 import type { SessionManager } from '../../services/SessionManager';
 import { VisionClient, WorkerError, grabFrame } from './VisionClient';
-import { resultBitmaps, type FrameSource, type ProcessResult } from './worker/protocol';
+import { connect, createNode } from './graph/graph';
+import type { BlockType, Graph } from './graph/types';
+import {
+  resultBitmaps,
+  type FrameSource,
+  type ProcessOptions,
+  type ProcessResult,
+} from './worker/protocol';
 
 /** At most 15 processing passes per second (plan, section 5.3). */
 export const MAX_HZ = 15;
@@ -9,7 +16,22 @@ export const REDUCED_WIDTH = 320;
 /** A pass slower than this switches the working image to 320 px. */
 export const SLOW_PASS_MS = 60;
 
+/** Width of node thumbnails in the editor. */
+export const THUMB_WIDTH = 160;
+
+/** A straight chain camera → blocks → output, laid out left to right. */
+export function chainGraph(types: BlockType[]): Graph {
+  const nodes = (['camera', ...types, 'output'] as BlockType[]).map((type, index) =>
+    createNode(type, { x: index * 230, y: 80 }),
+  );
+  let graph: Graph = { nodes, edges: [] };
+  for (let i = 1; i < nodes.length; i++)
+    graph = connect(graph, { source: nodes[i - 1].id, target: nodes[i].id, targetHandle: 'in' });
+  return graph;
+}
+
 export interface PlateState {
+  graph: Graph;
   status: 'idle' | 'loading' | 'ready' | 'error';
   error: 'csp' | 'failed' | null;
   frozen: boolean;
@@ -20,6 +42,7 @@ export interface PlateState {
 }
 
 const initial = (): PlateState => ({
+  graph: chainGraph(['grayscale', 'threshold', 'invert']),
   status: 'idle',
   error: null,
   frozen: false,
@@ -130,8 +153,27 @@ export class PlateSession {
     this.timer = setTimeout(() => void this.tick(), wait);
   }
 
-  protected buildRequest(): { options: { workWidth: number } } {
-    return { options: { workWidth: this.state.workWidth } };
+  /** Node shown in the large preview window, if any. */
+  protected previewNode: string | null = null;
+  /** The reader screen needs full-size input and output images. */
+  protected fullImages = false;
+
+  protected buildRequest(): { graph: Graph; options: ProcessOptions } {
+    return {
+      graph: this.state.graph,
+      options: {
+        workWidth: this.state.workWidth,
+        thumbWidth: THUMB_WIDTH,
+        preview: this.previewNode,
+        full: this.fullImages,
+      },
+    };
+  }
+
+  setGraph(graph: Graph) {
+    if (graph === this.state.graph) return;
+    this.patch({ graph });
+    this.invalidate();
   }
 
   private async tick() {

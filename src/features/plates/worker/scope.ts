@@ -32,6 +32,14 @@ export class MatScope {
     }
     return item;
   }
+  /** Number of objects currently owned by this scope. */
+  get size() {
+    return this.items.length;
+  }
+  /** Objects added after the scope had `count` items (the output of one operation). */
+  since(count: number): Deletable[] {
+    return this.items.slice(count);
+  }
   release() {
     for (const item of this.items.splice(0)) {
       if (!item.isDeleted?.()) item.delete();

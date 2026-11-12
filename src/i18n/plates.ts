@@ -18,6 +18,115 @@ export const plates = {
   cameraLabel: 'Kamera (bez odbicia lustrzanego)',
   workerImage: 'Obraz w czytniku',
   fpsUnit: 'kl./s',
+  sockets: {
+    color: 'obraz kolorowy',
+    gray: 'obraz w odcieniach szarości',
+    binary: 'obraz czarno-biały',
+    region: 'miejsce tablicy',
+  },
+  blocks: {
+    camera: {
+      title: 'Kamera',
+      description: 'Obraz, od którego zaczynamy.',
+    },
+    grayscale: {
+      title: 'Odcienie szarości',
+      description: 'Zamienia kolory na szarości. Liczy się tylko jasność.',
+    },
+    blur: {
+      title: 'Rozmycie',
+      description: 'Wygładza obraz i usuwa drobne kropki (szum).',
+      params: { strength: 'Siła' },
+    },
+    brightness: {
+      title: 'Jasność i kontrast',
+      description: 'Rozjaśnia lub przyciemnia obraz i wzmacnia różnice.',
+      params: { brightness: 'Jasność', contrast: 'Kontrast' },
+    },
+    equalize: {
+      title: 'Wyrównaj kontrast',
+      description: 'Sam rozciąga jasności na cały zakres – pomaga przy słabym świetle.',
+    },
+    threshold: {
+      title: 'Progowanie',
+      description: 'Jaśniejsze od progu – białe, ciemniejsze – czarne.',
+      params: { level: 'Próg', auto: 'Próg automatyczny' },
+    },
+    adaptive: {
+      title: 'Progowanie adaptacyjne',
+      description: 'Każdy fragment ma własny próg – radzi sobie z cieniem.',
+      params: { window: 'Okno', sensitivity: 'Czułość' },
+    },
+    invert: {
+      title: 'Odwróć kolory',
+      description: 'Białe staje się czarne, a czarne białe.',
+    },
+    erode: {
+      title: 'Odchudzanie (erozja)',
+      description: 'Zmniejsza białe kształty i usuwa drobne białe kropki.',
+      params: { size: 'Siła' },
+    },
+    dilate: {
+      title: 'Pogrubianie (dylatacja)',
+      description: 'Pogrubia białe kształty i skleja przerwy.',
+      params: { size: 'Siła' },
+    },
+    open: {
+      title: 'Otwarcie',
+      description: 'Odchudza, a potem pogrubia: usuwa drobne białe kropki.',
+      params: { size: 'Siła' },
+    },
+    close: {
+      title: 'Domknięcie',
+      description: 'Pogrubia, a potem odchudza: zalepia dziurki w znakach.',
+      params: { size: 'Siła' },
+    },
+    edges: {
+      title: 'Krawędzie',
+      description: 'Zostawia tylko brzegi kształtów.',
+      params: { level: 'Próg' },
+    },
+    findPlate: {
+      title: 'Znajdź tablicę',
+      description: 'Szuka największego prostokąta – ramki tablicy.',
+    },
+    cropPlate: {
+      title: 'Wytnij i wyprostuj',
+      description: 'Wycina tablicę i prostuje ją, nawet gdy jest przekrzywiona.',
+    },
+    shapeFilter: {
+      title: 'Filtr kształtów',
+      description: 'Zostawia tylko kształty o wysokości znaków.',
+      params: { minHeight: 'Najmniejsza wysokość', maxHeight: 'Największa wysokość' },
+    },
+    preview: {
+      title: 'Podgląd',
+      description: 'Pokazuje obraz w dużym oknie.',
+    },
+    compare: {
+      title: 'Porównaj',
+      description: 'Dwa obrazy obok siebie.',
+    },
+    output: {
+      title: 'Wynik',
+      description: 'Tu trafia obraz ze znakami: białe znaki na czarnym tle.',
+    },
+  },
+  inputs: { in: 'wejście', image: 'obraz', region: 'tablica', left: 'lewy', right: 'prawy' },
+  errors: {
+    needs: (block: string, needs: string, got: string) =>
+      `„${block}” potrzebuje: ${needs}. Dostaje: ${got}.`,
+    hintGray: 'Wstaw najpierw blok „Odcienie szarości”.',
+    hintBinary: 'Wstaw najpierw „Progowanie”, żeby obraz był czarno-biały.',
+    hintBinaryFromColor: 'Najpierw „Odcienie szarości”, potem „Progowanie”.',
+    hintRegion: 'Podłącz tutaj blok „Znajdź tablicę”.',
+    cycle: 'Tak nie można: połączenie zrobiłoby pętlę.',
+    self: 'Blok nie może łączyć się sam ze sobą.',
+    noOutput: 'Ten blok nie ma wyjścia.',
+    missingInput: (input: string) => `Brakuje połączenia: ${input}.`,
+    noPlate: 'Nie widzę tablicy.',
+    failed: 'Ten blok nie zadziałał na tym obrazie.',
+  },
   perf: {
     title: 'Test wydajności czytnika tablic',
     open: 'Test wydajności czytnika tablic',
