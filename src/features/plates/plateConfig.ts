@@ -1,4 +1,4 @@
-import raw from './plates.config.json';
+import raw from './plates.config.json' with { type: 'json' };
 
 /** Tile font, character set and plate layout: the single place to change them. */
 export interface PlateConfig {

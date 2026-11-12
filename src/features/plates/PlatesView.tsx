@@ -6,6 +6,7 @@ import type { BlockType } from './graph/types';
 import { NodeEditor } from './editor/NodeEditor';
 import { OutputStatus } from './editor/OutputStatus';
 import { plateConfig } from './plateConfig';
+import { ReaderView } from './reader/ReaderView';
 import { plateSessionFor } from './PlateSession';
 import './plates.css';
 
@@ -42,20 +43,38 @@ export function PlatesView({ session }: { session: SessionManager }) {
           <h1 id="plates-title">{text.title}</h1>
         </div>
         <div className="plates-actions">
-          <button disabled={!state.canUndo} onClick={() => plates.undo()} title="Ctrl+Z">
-            ↶ {t.undo}
-          </button>
-          <button disabled={!state.canRedo} onClick={() => plates.redo()} title="Ctrl+Y">
-            ↷ {t.redo}
-          </button>
-          <button onClick={() => plates.clearGraph()}>{t.clear}</button>
-          <button
-            aria-pressed={state.frozen}
-            disabled={state.status !== 'ready'}
-            onClick={() => void (state.frozen ? plates.unfreeze() : plates.freeze())}
-          >
-            {state.frozen ? text.unfreeze : text.freeze}
-          </button>
+          {state.view === 'editor' ? (
+            <>
+              <button disabled={!state.canUndo} onClick={() => plates.undo()} title="Ctrl+Z">
+                ↶ {t.undo}
+              </button>
+              <button disabled={!state.canRedo} onClick={() => plates.redo()} title="Ctrl+Y">
+                ↷ {t.redo}
+              </button>
+              <button onClick={() => plates.clearGraph()}>{t.clear}</button>
+            </>
+          ) : (
+            <button onClick={() => plates.setView('editor')}>{text.reader.back}</button>
+          )}
+          {!state.sample && (
+            <button
+              aria-pressed={state.frozen}
+              disabled={state.status !== 'ready'}
+              onClick={() => void (state.frozen ? plates.unfreeze() : plates.freeze())}
+            >
+              {state.frozen ? text.unfreeze : text.freeze}
+            </button>
+          )}
+          {state.view === 'editor' && (
+            <button
+              className="launch-reader"
+              disabled={!plates.canRead}
+              title={plates.canRead ? undefined : text.reader.launchHint}
+              onClick={() => plates.setView('reader')}
+            >
+              {text.reader.launch} →
+            </button>
+          )}
         </div>
       </div>
       {state.status === 'loading' && (
@@ -68,8 +87,12 @@ export function PlatesView({ session }: { session: SessionManager }) {
           {state.error === 'csp' ? text.perf.csp : text.visionFailed}
         </p>
       )}
-      <div className="plates-workspace">
-        <NodeEditor plates={plates} blocks={ALL_BLOCKS} outputStatus={outputStatus} />
+      <div className={`plates-workspace view-${state.view}`}>
+        {state.view === 'editor' ? (
+          <NodeEditor plates={plates} blocks={ALL_BLOCKS} outputStatus={outputStatus} />
+        ) : (
+          <ReaderView plates={plates} />
+        )}
         <figure className="camera-dock">
           {/* No mirroring here: a mirrored plate would show reversed characters. */}
           <video ref={video} autoPlay muted playsInline aria-label={text.cameraLabel} />

@@ -192,3 +192,31 @@ describe('voting over frames', () => {
     expect(voter.result()).toEqual([]);
   });
 });
+
+describe('comparing with "Moja tablica"', () => {
+  it('marks every position as ok, wrong, missing or extra', async () => {
+    const { compareReading, cleanPlate } = await import(
+      '../src/features/plates/recognition/compare'
+    );
+    expect(cleanPlate(' kot-2026 ')).toBe('KOT2026');
+    expect(compareReading('K0T2026', 'kot2026').map((c) => c.verdict)).toEqual([
+      'ok',
+      'wrong',
+      'ok',
+      'ok',
+      'ok',
+      'ok',
+      'ok',
+    ]);
+    expect(
+      compareReading('KOT20', 'KOT2')
+        .map((c) => c.verdict)
+        .at(-1),
+    ).toBe('extra');
+    expect(
+      compareReading('KO', 'KOT')
+        .map((c) => c.verdict)
+        .at(-1),
+    ).toBe('missing');
+  });
+});

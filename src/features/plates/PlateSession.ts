@@ -34,6 +34,10 @@ export function chainGraph(types: BlockType[]): Graph {
 }
 
 export interface PlateState {
+  /** Node editor or the plate reader screen. */
+  view: 'editor' | 'reader';
+  /** The plate the student assembled, typed on the reader screen. */
+  myPlate: string;
   graph: Graph;
   canUndo: boolean;
   canRedo: boolean;
@@ -55,6 +59,8 @@ export interface PlateState {
 }
 
 const initial = (): PlateState => ({
+  view: 'editor',
+  myPlate: '',
   graph: chainGraph([]),
   canUndo: false,
   canRedo: false,
@@ -178,9 +184,6 @@ export class PlateSession {
     this.timer = setTimeout(() => void this.tick(), wait);
   }
 
-  /** The reader screen needs full-size input and output images. */
-  protected fullImages = false;
-
   protected buildRequest(): { graph: Graph; options: ProcessOptions } {
     return {
       graph: this.state.graph,
@@ -188,7 +191,8 @@ export class PlateSession {
         workWidth: this.state.workWidth,
         thumbWidth: THUMB_WIDTH,
         preview: this.state.preview,
-        full: this.fullImages,
+        // The reader screen needs full-size input and output images.
+        full: this.state.view === 'reader',
       },
     };
   }
@@ -322,6 +326,22 @@ export class PlateSession {
     const key = (list: VotedCharacter[]) =>
       list.map((c) => `${c.char}${c.confidence}${c.alternatives.map((a) => a.char)}`).join();
     if (key(reading) !== key(this.state.reading)) this.patch({ reading });
+  }
+
+  setView(view: PlateState['view']) {
+    if (view === this.state.view) return;
+    this.patch({ view, preview: null });
+    this.invalidate();
+  }
+
+  setMyPlate(myPlate: string) {
+    this.patch({ myPlate: myPlate.toUpperCase().slice(0, 12) });
+  }
+
+  /** The reader makes sense once the Output block finds a plausible number of characters. */
+  get canRead() {
+    const found = this.state.reading.length;
+    return found >= Math.max(1, this.state.expected - 2) && found <= this.state.expected + 1;
   }
 
   /** The text read from the current Output image. */

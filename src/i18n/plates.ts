@@ -152,6 +152,28 @@ export const plates = {
   reader: {
     found: (found: number, expected: number) => `Znaleziono ${found} / ${expected} znaków`,
     readText: 'Odczytany tekst',
+    launch: 'Uruchom czytnik tablic',
+    launchHint: 'Przycisk włączy się, gdy „Wynik” znajdzie tyle znaków, ile ma tablica.',
+    back: '← Wróć do edytora',
+    title: 'Czytnik tablic',
+    before: 'Przed: obraz z kamery',
+    after: 'Po: obraz z bloku „Wynik”',
+    result: 'Odczytana tablica',
+    nothing: 'Czytnik nie widzi jeszcze żadnych znaków.',
+    myPlate: 'Moja tablica',
+    myPlateHint: 'Wpisz znaki, które ułożyłeś na tablicy.',
+    allOk: 'Brawo! Czytnik odczytał całą tablicę poprawnie.',
+    mistakes: (count: number) =>
+      count === 1 ? 'Czytnik pomylił 1 znak.' : `Czytnik pomylił ${count} znaki/znaków.`,
+    misread: (read: string, expected: string) =>
+      read ? `Przeczytał „${read}” zamiast „${expected}”` : `Nie znalazł „${expected}”`,
+    extra: (read: string) => `Dodatkowy znak „${read}”`,
+    details: 'Jak bardzo jest pewny?',
+    position: 'Pozycja',
+    character: 'Znak',
+    confidence: 'Podobieństwo',
+    alternatives: 'Następne w kolejce',
+    stable: 'Wynik uśredniony z kilku ostatnich klatek, żeby nie migał.',
   },
   perf: {
     title: 'Test wydajności czytnika tablic',
