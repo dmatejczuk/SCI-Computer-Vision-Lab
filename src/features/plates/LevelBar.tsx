@@ -30,7 +30,7 @@ export function LevelTabs({ plates }: { plates: PlateSession }) {
 }
 
 /** The level's goal, hints revealed one at a time and the image source. */
-export function LevelBar({ plates }: { plates: PlateSession }) {
+export function LevelBar({ plates, onShowCode }: { plates: PlateSession; onShowCode: () => void }) {
   const state = useSyncExternalStore(plates.subscribe, plates.getSnapshot);
   const level = levelById(state.level);
   const done = state.completed.includes(level.id);
@@ -51,6 +51,9 @@ export function LevelBar({ plates }: { plates: PlateSession }) {
             </div>
           )}
           {level.sample && <span className="level-source-label">{t.sampleSource}</span>}
+          <button className="code-button" onClick={onShowCode}>
+            {text.editor.showCode}
+          </button>
           <button
             className="hint-button"
             disabled={state.hintsShown >= level.hints.length}

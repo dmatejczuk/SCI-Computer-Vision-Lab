@@ -148,6 +148,12 @@ export const plates = {
     autoLevel: 'Wybrany próg',
     shapes: 'Kształty',
     canvas: 'Plansza z blokami',
+    showCode: 'Pokaż kod',
+    codeTitle: 'Twój graf jako program w Pythonie',
+    codeNote:
+      'Każdy blok to jedna linijka prawdziwego programu z biblioteką OpenCV. Tak samo robią to programiści.',
+    copy: 'Kopiuj kod',
+    copied: 'Skopiowano',
   },
   reader: {
     found: (found: number, expected: number) => `Znaleziono ${found} / ${expected} znaków`,

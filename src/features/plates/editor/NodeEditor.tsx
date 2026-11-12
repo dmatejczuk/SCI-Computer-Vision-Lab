@@ -317,7 +317,11 @@ function Flow({
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (target.closest('input[type="text"], textarea, dialog')) return;
+      if (
+        target.closest('input[type="text"], textarea, dialog') ||
+        document.querySelector('dialog[open]')
+      )
+        return;
       if (!wrapper.current?.isConnected) return;
       const key = event.key.toLowerCase();
       if ((event.ctrlKey || event.metaKey) && key === 'z' && !event.shiftKey) {

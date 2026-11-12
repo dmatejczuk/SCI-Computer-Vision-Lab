@@ -351,6 +351,9 @@ export class PlateSession {
     this.inFlight = true;
     this.dirty = false;
     const started = performance.now();
+    // The 15 Hz cadence counts from the start of each pass, not from its end.
+    const interval = started - this.lastPass;
+    this.lastPass = started;
     try {
       const { result } = await this.vision.request<'processed'>(
         { type: 'process', source, ...this.buildRequest() },
@@ -360,19 +363,16 @@ export class PlateSession {
         resultBitmaps(result).forEach((bitmap) => bitmap.close());
         return;
       }
-      this.publish(result, performance.now() - started);
+      this.publish(result, performance.now() - started, interval);
     } catch (error) {
       if (generation === this.generation) console.error('[plates] pass failed', error);
     } finally {
       this.inFlight = false;
-      if (generation === this.generation) {
-        this.lastPass = performance.now();
-        this.schedule();
-      }
+      if (generation === this.generation) this.schedule();
     }
   }
 
-  private publish(result: ProcessResult, elapsed: number) {
+  private publish(result: ProcessResult, elapsed: number, interval: number) {
     const previous = this.latest;
     this.latest = result;
     this.resultListeners.forEach((listener) => listener(result));
@@ -380,8 +380,7 @@ export class PlateSession {
     if (this.live) {
       this.recent = [...this.recent.slice(-9), result.totalMs];
     }
-    const now = performance.now();
-    const fps = this.live && this.lastPass ? 1000 / Math.max(1, now - this.lastPass) : 0;
+    const fps = this.live && interval < 5000 ? 1000 / Math.max(1, interval) : 0;
     const workWidth = adaptWidth(this.state.workWidth, this.recent);
     if (workWidth !== this.state.workWidth) this.recent = [];
     this.patch({

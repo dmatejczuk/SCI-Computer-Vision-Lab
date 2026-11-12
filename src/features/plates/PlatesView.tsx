@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { SessionManager } from '../../services/SessionManager';
 import { plates as text } from '../../i18n/plates';
+import { CodeModal } from './editor/CodeModal';
 import { NodeEditor } from './editor/NodeEditor';
 import { OutputStatus } from './editor/OutputStatus';
 import { BLOCKS } from './graph/nodes';
@@ -37,6 +38,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
   }, [session, plates]);
   const t = text.editor;
   const outputStatus = useMemo(() => <OutputStatus plates={plates} />, [plates]);
+  const [code, setCode] = useState(false);
   return (
     <main className="plates" aria-labelledby="plates-title">
       <div className="plates-toolbar">
@@ -87,7 +89,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
           {state.error === 'csp' ? text.perf.csp : text.visionFailed}
         </p>
       )}
-      {state.view === 'editor' && <LevelBar plates={plates} />}
+      {state.view === 'editor' && <LevelBar plates={plates} onShowCode={() => setCode(true)} />}
       <div className={`plates-workspace view-${state.view}`}>
         {state.view === 'editor' ? (
           <NodeEditor
@@ -108,6 +110,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
           </figcaption>
         </figure>
       </div>
+      {code && <CodeModal graph={state.graph} onClose={() => setCode(false)} />}
     </main>
   );
 }

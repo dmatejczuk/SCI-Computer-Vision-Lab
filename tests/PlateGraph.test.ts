@@ -153,3 +153,21 @@ describe('editing helpers', () => {
     );
   });
 });
+
+describe('"Pokaż kod"', () => {
+  it('turns a graph into readable Python OpenCV code', async () => {
+    const { toPython } = await import('../src/features/plates/graph/codegen');
+    const { LEVELS } = await import('../src/features/plates/levels');
+    const simple = toPython(chain('grayscale', 'threshold', 'invert'));
+    expect(simple).toContain('import cv2');
+    expect(simple).toContain('gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)');
+    expect(simple).toContain('_, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)');
+    expect(simple).toContain('inverted = cv2.bitwise_not(binary)');
+    expect(simple).toContain('text = read_characters(inverted)');
+    const advanced = toPython(LEVELS[2].reference());
+    expect(advanced).toContain('def find_plate(binary):');
+    expect(advanced).toContain('cropped = crop_plate(gray, plate)');
+    expect(advanced).toContain('cv2.ADAPTIVE_THRESH_GAUSSIAN_C');
+    expect(toPython(chain())).toContain('# Jeszcze niepodłączone: Wynik');
+  });
+});

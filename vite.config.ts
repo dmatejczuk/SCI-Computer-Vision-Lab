@@ -58,7 +58,16 @@ export default defineConfig({
     // OpenCV.js (~11 MB with embedded WebAssembly) is a separate, lazily loaded worker chunk.
     chunkSizeWarningLimit: 12000,
     rollupOptions: {
-      output: { manualChunks: { tensorflow: ['@tensorflow/tfjs'], phaser: ['phaser'] } },
+      output: {
+        manualChunks: (id) => {
+          if (/[\\/]node_modules[\\/]@tensorflow[\\/]/.test(id)) return 'tensorflow';
+          if (/[\\/]node_modules[\\/]phaser[\\/]/.test(id)) return 'phaser';
+          // Shared CommonJS interop helpers get their own tiny chunk, so the lazily loaded
+          // plate module never has to import the TFJS chunk just for them.
+          if (id.includes('commonjsHelpers')) return 'commonjs-helpers';
+          return undefined;
+        },
+      },
     },
   },
 });
