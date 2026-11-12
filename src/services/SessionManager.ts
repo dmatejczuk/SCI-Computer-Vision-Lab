@@ -210,6 +210,10 @@ export class SessionManager {
   attachVideo(video: HTMLVideoElement) {
     this.video = video;
   }
+  /** The video element currently showing the source (the plate module has its own). */
+  get activeVideo(): HTMLVideoElement | null {
+    return this.video;
+  }
   private run(action: (signal: AbortSignal) => Promise<void>, kind: ErrorKind) {
     if (this.snapshot.busy || this.snapshot.resetting) return Promise.resolve();
     const signal = this.abort.signal;

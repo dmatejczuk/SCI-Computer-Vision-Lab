@@ -1,0 +1,7 @@
+{
+  "package": "@techstark/opencv-js",
+  "version": "4.12.0-release.1",
+  "license": "Apache-2.0",
+  "file": "dist/opencv.js",
+  "sha256": "bd0c3e6448043de04f6a64a12cb7b759f78c3ab8f7c35c9f2e0f71c88bb17103"
+}
