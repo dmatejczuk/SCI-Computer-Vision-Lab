@@ -43,6 +43,10 @@ export interface PlateState {
   practice: boolean;
   /** Levels whose plate was read completely and correctly. */
   completed: LevelId[];
+  /** Facilitator option: offer every block in the palette, not only the level's subset. */
+  allBlocks: boolean;
+  cachedMats: number;
+  wasmBytes: number;
   /** Node editor or the plate reader screen. */
   view: 'editor' | 'reader';
   /** The plate the student assembled, typed on the reader screen. */
@@ -72,6 +76,9 @@ const initial = (): PlateState => ({
   hintsShown: 0,
   practice: false,
   completed: [],
+  allBlocks: false,
+  cachedMats: 0,
+  wasmBytes: 0,
   view: 'editor',
   myPlate: '',
   graph: levelById(1).start(),
@@ -265,6 +272,10 @@ export class PlateSession {
     this.setSample(practice ? level.practice : null);
   }
 
+  setAllBlocks(allBlocks: boolean) {
+    this.patch({ allBlocks });
+  }
+
   showHint() {
     const total = levelById(this.state.level).hints.length;
     this.patch({ hintsShown: Math.min(total, this.state.hintsShown + 1) });
@@ -377,6 +388,8 @@ export class PlateSession {
       passMs: elapsed,
       fps: this.state.fps ? this.state.fps * 0.8 + fps * 0.2 : fps,
       liveMats: result.liveMats,
+      cachedMats: result.cachedMats,
+      wasmBytes: result.wasmBytes,
       workWidth,
     });
     this.afterResult(result);
@@ -460,6 +473,8 @@ export class PlateSession {
 }
 
 let instance: PlateSession | null = null;
+/** The station's plate session if the plate module was opened (facilitator panel). */
+export const existingPlateSession = () => instance;
 /** One plate session per station tab, cleared by the session's "Nowa grupa". */
 export function plateSessionFor(session: SessionManager): PlateSession {
   if (!instance) {

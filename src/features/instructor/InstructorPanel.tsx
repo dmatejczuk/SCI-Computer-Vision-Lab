@@ -8,6 +8,9 @@ import { plates } from '../../i18n/plates';
 const PerfTest = lazy(() =>
   import('../plates/diagnostics/PerfTest').then((m) => ({ default: m.PerfTest })),
 );
+const PlatesInstructor = lazy(() =>
+  import('../plates/diagnostics/PlatesInstructor').then((m) => ({ default: m.PlatesInstructor })),
+);
 export function InstructorPanel({
   session,
   onClose,
@@ -50,6 +53,11 @@ export function InstructorPanel({
         {pl.testGame}
       </button>
       <button onClick={() => setPerf(true)}>{plates.perf.open}</button>
+      {state.mode === 'plates' && (
+        <Suspense fallback={null}>
+          <PlatesInstructor />
+        </Suspense>
+      )}
       <dl className="diagnostics">
         <dt>{text.camera}</dt>
         <dd>{state.cameraLabel ? text.connected : text.disconnected}</dd>

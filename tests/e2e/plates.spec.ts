@@ -116,3 +116,18 @@ test('hub → plate reader → level 1 → launching the reader', async ({ page 
   await expect(page.getByRole('tab', { name: /Poziom 1 ✓/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('facilitator panel shows plate diagnostics and loads the reference solution', async ({
+  page,
+}) => {
+  await openPlates(page);
+  await page.keyboard.press('Control+Shift+D');
+  const panel = page.getByRole('dialog', { name: 'Tryb prowadzącego' });
+  await expect(panel.getByRole('heading', { name: 'Czytnik tablic (część 1)' })).toBeVisible();
+  await expect(panel.getByTestId('plates-mats')).toHaveText(/^0 \/ \d+$/);
+  await panel.getByRole('button', { name: 'Wczytaj rozwiązanie poziomu 1' }).click();
+  await panel.getByRole('button', { name: 'Zamknij' }).click();
+  await expect(page.getByText('Znaleziono 7 / 7 znaków')).toBeVisible({ timeout: 30000 });
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.block-card')).toHaveCount(2);
+});

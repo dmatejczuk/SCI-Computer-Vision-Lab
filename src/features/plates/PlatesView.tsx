@@ -3,6 +3,8 @@ import type { SessionManager } from '../../services/SessionManager';
 import { plates as text } from '../../i18n/plates';
 import { NodeEditor } from './editor/NodeEditor';
 import { OutputStatus } from './editor/OutputStatus';
+import { BLOCKS } from './graph/nodes';
+import type { BlockType } from './graph/types';
 import { LevelBar, LevelTabs } from './LevelBar';
 import { levelById } from './levels';
 import { plateConfig } from './plateConfig';
@@ -16,6 +18,8 @@ if (typeof FontFace !== 'undefined')
     .load()
     .then((face) => document.fonts.add(face))
     .catch(() => {});
+
+const ALL_BLOCKS = (Object.keys(BLOCKS) as BlockType[]).filter((type) => !BLOCKS[type].fixed);
 
 /** Part 1 of the workshop: the plate reader (node editor and reader screens). */
 export function PlatesView({ session }: { session: SessionManager }) {
@@ -89,7 +93,7 @@ export function PlatesView({ session }: { session: SessionManager }) {
           <NodeEditor
             key={state.level}
             plates={plates}
-            blocks={levelById(state.level).blocks}
+            blocks={state.allBlocks ? ALL_BLOCKS : levelById(state.level).blocks}
             outputStatus={outputStatus}
           />
         ) : (

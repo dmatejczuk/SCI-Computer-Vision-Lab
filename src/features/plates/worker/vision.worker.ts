@@ -233,6 +233,7 @@ async function process(
       reading,
       liveMats: 0,
       cachedMats: 0,
+      wasmBytes: 0,
     };
     const preview = options.preview ? displays.get(options.preview) : undefined;
     if (preview) bitmap(preview, undefined, (b) => (result.preview = b));
@@ -278,6 +279,7 @@ async function handle(message: ToWorker) {
     const result = await process(cv, message);
     result.liveMats = MatScope.live;
     result.cachedMats = cache.size;
+    result.wasmBytes = (cv as unknown as { HEAP8?: Int8Array }).HEAP8?.length ?? 0;
     post({ type: 'processed', id: message.id, result }, resultBitmaps(result));
   } else if (message.type === 'freeze') {
     frozen = bitmapToImageData(message.bitmap);

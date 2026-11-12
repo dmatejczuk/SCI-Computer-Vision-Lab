@@ -52,6 +52,8 @@ export interface ProcessResult {
   reading?: { characters: Recognized[]; size: { width: number; height: number } };
   liveMats: number;
   cachedMats: number;
+  /** Size of OpenCV's WebAssembly memory: it must not keep growing (soak test). */
+  wasmBytes: number;
 }
 
 export type ToWorker =
