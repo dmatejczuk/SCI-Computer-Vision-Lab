@@ -3,6 +3,8 @@ import { pathToFileURL } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { RoomRegistry, type Connection } from './RoomRegistry.ts';
 import { parseSignal } from '../shared/signaling.ts';
+/** Wrong manual codes allowed per client address and minute. */
+export const CODE_FAILURE_LIMIT = 10;
 // Caddy, the only route to this port in Docker, replaces X-Forwarded-For with the client address.
 // Direct loopback connections without it are local development and tests and are not limited per client.
 function clientAddress(req: IncomingMessage): string | null {
@@ -40,17 +42,22 @@ export function createSignaling(
   // One client (e.g. a student's laptop) must not exhaust the shared room and socket capacity.
   const sockets = new Map<string, number>(),
     recent = new Map<string, number[]>();
-  const allow = (key: string, limit: number) => {
+  const recentTimes = (key: string) => {
     const now = Date.now(),
       times = (recent.get(key) ?? []).filter((t) => t > now - 60000);
     recent.set(key, times);
+    return times;
+  };
+  const allow = (key: string, limit: number) => {
+    const times = recentTimes(key);
     if (times.length >= limit) return false;
-    times.push(now);
+    times.push(Date.now());
     return true;
   };
   server.on('upgrade', (req, socket, head) => {
     const now = Date.now(),
-      client = clientLimit > 0 ? clientAddress(req) : null;
+      address = clientAddress(req),
+      client = clientLimit > 0 ? address : null;
     while (arrivals.length && arrivals[0] < now - 60000) arrivals.shift();
     if (
       req.url !== '/ws' ||
@@ -65,9 +72,13 @@ export function createSignaling(
       return;
     }
     arrivals.push(now);
-    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, client));
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, client, address));
   });
-  wss.on('connection', (ws: WebSocket, client: string | null) => {
+  wss.on('connection', (ws: WebSocket, client: string | null, address: string | null) => {
+    // Wrong manual codes are limited per address even with CLIENT_SOCKET_LIMIT=0: a school
+    // behind one NAT rarely mistypes many codes a minute, but one guesser must not use up
+    // the shared budget in RoomRegistry and block manual pairing for every station.
+    const codeKey = address === null ? null : `code:${address}`;
     if (client !== null) sockets.set(client, (sockets.get(client) ?? 0) + 1);
     let windowStart = Date.now(),
       messages = 0,
@@ -110,10 +121,15 @@ export function createSignaling(
         if (++messages > 160) throw new Error('RATE');
         const m = parseSignal(data.toString());
         if (ids.has(m.id)) throw new Error('REPLAY');
-        if (m.type === 'join-code' && client !== null && !allow(`code:${client}`, 10))
-          throw new Error('RATE');
+        const guess = m.type === 'join-code' && codeKey !== null;
+        if (guess && recentTimes(codeKey).length >= CODE_FAILURE_LIMIT) throw new Error('RATE');
         ids.add(m.id);
-        registry.handle(c, m);
+        try {
+          registry.handle(c, m);
+        } catch (error) {
+          if (guess) recentTimes(codeKey).push(Date.now());
+          throw error;
+        }
         if (registry.members.has(c)) clearTimeout(auth);
       } catch {
         c.send({ type: 'error' });

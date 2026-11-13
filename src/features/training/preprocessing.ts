@@ -1,4 +1,5 @@
-import * as tf from '@tensorflow/tfjs';
+import type * as TF from '@tensorflow/tfjs';
+import { tfjs } from './tf';
 import { config } from '../../config/settings';
 import type { InputMetadata, PixelSource } from '../explanation/types';
 
@@ -7,7 +8,8 @@ export const normalizePixel = (value: number) =>
   value / normalization.divisor + normalization.offset;
 
 // Shared by collection, live inference and the frozen-frame explanation.
-export function prepareInput(source: PixelSource): { input: tf.Tensor4D; metadata: InputMetadata } {
+export function prepareInput(source: PixelSource): { input: TF.Tensor4D; metadata: InputMetadata } {
+  const tf = tfjs();
   return tf.tidy(() => {
     const pixels = tf.browser.fromPixels(source);
     const [height, width] = pixels.shape;
@@ -21,7 +23,7 @@ export function prepareInput(source: PixelSource): { input: tf.Tensor4D; metadat
       .toFloat()
       .div(normalization.divisor)
       .add(normalization.offset)
-      .expandDims(0) as tf.Tensor4D;
+      .expandDims(0) as TF.Tensor4D;
     return {
       input,
       metadata: {

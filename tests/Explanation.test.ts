@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import * as tf from '@tensorflow/tfjs';
+import { loadTf } from '../src/features/training/tf';
 import { aggregateFeatures } from '../src/features/explanation/featureVisualization';
 import { interpretScores } from '../src/features/prediction/InferencePipeline';
 import { GestureController } from '../src/features/prediction/GestureController';
@@ -10,6 +11,7 @@ import type { InferenceSnapshot } from '../src/features/explanation/types';
 import { SnapshotCapture } from '../src/features/explanation/SnapshotCapture';
 import type { InferencePipeline } from '../src/features/prediction/InferencePipeline';
 beforeAll(async () => {
+  await loadTf();
   await tf.setBackend('cpu');
   await tf.ready();
 });

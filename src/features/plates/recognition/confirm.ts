@@ -58,11 +58,17 @@ export class Confirmer {
   }
 }
 
+/**
+ * Most plates kept in the collection. The phone rejects feeds with more than 200 entries,
+ * so the list must stay well below that or the phone would silently stop updating.
+ */
+export const MAX_COLLECTED = 50;
+
 /** Adds a confirmed plate to the collection: newest first, repeated plates counted. */
 export function collect(list: CollectedPlate[], text: string, at = Date.now()): CollectedPlate[] {
   const previous = list.find((item) => item.text === text);
   return [
     { text, count: (previous?.count ?? 0) + 1, at },
     ...list.filter((item) => item.text !== text),
-  ];
+  ].slice(0, MAX_COLLECTED);
 }

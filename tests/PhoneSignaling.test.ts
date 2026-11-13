@@ -373,3 +373,54 @@ it('rate limits manual guesses across sockets and releases the window', () => {
   expect(phone.events.at(-1)!.type).toBe('waiting');
   r.close();
 });
+it('counts only wrong manual codes towards the shared limit', () => {
+  const r = new RoomRegistry();
+  for (let i = 0; i < 150; i++) {
+    const owner = client();
+    r.handle(owner.c, msg('create', { name: 'Desk' }));
+    const phone = client();
+    r.handle(phone.c, msg('join-code', { code: owner.events[0].code, name: 'Phone' }));
+    expect(phone.events.at(-1)!.type).toBe('waiting');
+    r.handle(owner.c, msg('leave'));
+  }
+  r.close();
+});
+it('limits wrong codes per client address even without a socket limit', async () => {
+  const app = createSignaling('http://localhost:5173', undefined, 0);
+  await new Promise<void>((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+  const port = (app.server.address() as { port: number }).port;
+  const sockets: WebSocket[] = [];
+  const open = async (address?: string) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, {
+      origin: 'http://localhost:5173',
+      headers: address ? { 'x-forwarded-for': address } : {},
+    });
+    sockets.push(ws);
+    await new Promise((resolve) => ws.once('open', resolve));
+    return ws;
+  };
+  const reply = (ws: WebSocket, type: string, data: Partial<Signal>) => {
+    const response = new Promise<ServerEvent>((resolve) =>
+      ws.once('message', (raw) => resolve(JSON.parse(raw.toString()))),
+    );
+    ws.send(JSON.stringify(msg(type, data)));
+    return response;
+  };
+  try {
+    const owner = await open();
+    const { code } = await reply(owner, 'create', { name: 'Desk' });
+    for (let i = 0; i < 10; i++)
+      expect(
+        (await reply(await open('198.51.100.7'), 'join-code', { code: 'AAAAAA', name: 'G' })).type,
+      ).toBe('error');
+    expect((await reply(await open('198.51.100.7'), 'join-code', { code, name: 'P' })).type).toBe(
+      'error',
+    );
+    expect((await reply(await open('198.51.100.8'), 'join-code', { code, name: 'P' })).type).toBe(
+      'waiting',
+    );
+  } finally {
+    sockets.forEach((ws) => ws.terminate());
+    await app.close();
+  }
+});

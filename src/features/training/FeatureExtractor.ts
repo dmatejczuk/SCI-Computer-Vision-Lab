@@ -1,12 +1,14 @@
-import * as tf from '@tensorflow/tfjs';
+import type * as TF from '@tensorflow/tfjs';
+import { loadTf, tfjs } from './tf';
 import { config } from '../../config/settings';
 import { prepareInput, renderPreparedInput } from './preprocessing';
 import type { ActivationLayer, PixelSource } from '../explanation/types';
 export class FeatureExtractor {
-  private base: tf.LayersModel | null = null;
-  private features: tf.LayersModel | null = null;
-  private activationView: tf.LayersModel | null = null;
+  private base: TF.LayersModel | null = null;
+  private features: TF.LayersModel | null = null;
+  private activationView: TF.LayersModel | null = null;
   async load(signal: AbortSignal) {
+    const tf = await loadTf();
     if (this.base) return;
     try {
       await tf.setBackend('webgl');
@@ -28,7 +30,7 @@ export class FeatureExtractor {
       const warmup = tf.tidy(() => {
         const result = this.features!.predict(
           tf.zeros([1, config.imageSize, config.imageSize, 3]),
-        ) as tf.Tensor4D;
+        ) as TF.Tensor4D;
         return result.mean([1, 2]);
       });
       try {
@@ -47,9 +49,10 @@ export class FeatureExtractor {
   async analyze(source: PixelSource, captureDetails = false) {
     if (!this.features || ('readyState' in source && (source.readyState < 2 || !source.videoWidth)))
       throw new Error('Camera or extractor not ready');
+    const tf = tfjs();
     const started = performance.now();
     const { input, metadata } = prepareInput(source);
-    let embedding: tf.Tensor | undefined;
+    let embedding: TF.Tensor | undefined;
     try {
       // Only a requested snapshot reads input pixels back from the GPU.
       const inputValues = captureDetails ? Float32Array.from(await input.data()) : null;
@@ -58,7 +61,7 @@ export class FeatureExtractor {
         : null;
       const preparedAt = performance.now();
       embedding = tf.tidy(() => {
-        const featureMap = this.features!.predict(input) as tf.Tensor4D;
+        const featureMap = this.features!.predict(input) as TF.Tensor4D;
         return featureMap.mean([1, 2]).reshape([config.embeddingSize]);
       });
       const featureVector = Float32Array.from(await embedding.data());
@@ -77,15 +80,16 @@ export class FeatureExtractor {
   }
   async inspectActivations(values: Float32Array, shape: number[]): Promise<ActivationLayer[]> {
     if (!this.base) throw new Error('Extractor not loaded');
+    const tf = tfjs();
     const names = ['conv_pw_1_relu', 'conv_pw_11_relu'];
     this.activationView ??= tf.model({
       inputs: this.base.inputs,
-      outputs: names.map((name) => this.base!.getLayer(name).output as tf.SymbolicTensor),
+      outputs: names.map((name) => this.base!.getLayer(name).output as TF.SymbolicTensor),
     });
     const input = tf.tensor4d(values, shape as [number, number, number, number]);
-    let outputs: tf.Tensor[] = [];
+    let outputs: TF.Tensor[] = [];
     try {
-      outputs = this.activationView.predict(input) as tf.Tensor[];
+      outputs = this.activationView.predict(input) as TF.Tensor[];
       const layers: ActivationLayer[] = [];
       for (let index = 0; index < outputs.length; index++) {
         const output = outputs[index];

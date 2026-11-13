@@ -243,7 +243,13 @@ async function process(
       const output = outputNode && displays.get(outputNode.id);
       if (output) bitmap(output, undefined, (b) => (result.output = b));
     }
-    await Promise.all(pending);
+    // allSettled: if one bitmap fails, the ones already created must still be closed.
+    const settled = await Promise.allSettled(pending);
+    const failure = settled.find((item) => item.status === 'rejected');
+    if (failure) {
+      resultBitmaps(result).forEach((b) => b.close());
+      throw failure.reason;
+    }
     result.totalMs = performance.now() - started;
     return result;
   } finally {

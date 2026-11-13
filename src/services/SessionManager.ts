@@ -13,7 +13,7 @@ import {
   type ExplanationState,
   type ExplanationStep,
 } from '../features/explanation/types';
-import * as tf from '@tensorflow/tfjs';
+import { loadedTf } from '../features/training/tf';
 import { config, defaults, type GestureSettings } from '../config/settings';
 import { CameraService } from '../features/camera/CameraService';
 import { DatasetManager } from '../features/dataset/DatasetManager';
@@ -751,9 +751,11 @@ export class SessionManager {
     await this.train();
   }
   diagnostics() {
+    // TensorFlow.js is loaded with the model; before that there is nothing to report.
+    const tf = loadedTf();
     return {
-      memory: tf.memory(),
-      backend: tf.getBackend(),
+      memory: tf?.memory() ?? { numTensors: 0, numBytes: 0, numDataBuffers: 0, unreliable: false },
+      backend: tf?.getBackend(),
       controller: this.gestures.state,
       fps: this.game.fps,
     };

@@ -60,7 +60,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          if (/[\\/]node_modules[\\/]@tensorflow[\\/]/.test(id)) return 'tensorflow';
+          // tfApi is loaded lazily; kept with TFJS so it is never merged into an eager chunk.
+          if (
+            /[\\/]node_modules[\\/]@tensorflow[\\/]/.test(id) ||
+            /[\\/]features[\\/]training[\\/]tfApi\.ts$/.test(id)
+          )
+            return 'tensorflow';
           if (/[\\/]node_modules[\\/]phaser[\\/]/.test(id)) return 'phaser';
           // Shared CommonJS interop helpers get their own tiny chunk, so the lazily loaded
           // plate module never has to import the TFJS chunk just for them.

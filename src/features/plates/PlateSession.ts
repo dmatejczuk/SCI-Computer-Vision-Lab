@@ -516,23 +516,45 @@ export class PlateSession {
     return this.state.reading.map((c) => c.char).join('');
   }
 
+  /** A freeze is being set up: a second click must not grab and send another frame. */
+  private freezing = false;
+
   async freeze() {
-    if (this.state.frozen || !this.video || this.state.status !== 'ready') return;
-    const bitmap = await grabFrame(this.video, FULL_WIDTH, this.state.orientation, this.dock);
-    if (!bitmap) return;
-    await this.vision.request<'ok'>({ type: 'freeze', bitmap }, [bitmap]);
-    this.voter.clear();
-    this.patch({ frozen: true });
-    this.session.setPlatesLive(this.live);
-    this.invalidate();
+    if (this.freezing || this.state.frozen || !this.video || this.state.status !== 'ready') return;
+    this.freezing = true;
+    const generation = this.generation;
+    try {
+      const bitmap = await grabFrame(this.video, FULL_WIDTH, this.state.orientation, this.dock);
+      if (!bitmap) return;
+      if (generation !== this.generation || !this.running) {
+        bitmap.close();
+        return;
+      }
+      await this.vision.request<'ok'>({ type: 'freeze', bitmap }, [bitmap]);
+      if (generation !== this.generation) return;
+      this.voter.clear();
+      this.patch({ frozen: true });
+      this.session.setPlatesLive(this.live);
+      this.invalidate();
+    } catch (error) {
+      // The worker may have been terminated by "Nowa grupa" meanwhile; the frame stays live.
+      if (generation === this.generation) console.error('[plates] freeze failed', error);
+    } finally {
+      this.freezing = false;
+    }
   }
 
   async unfreeze() {
     if (!this.state.frozen) return;
+    const generation = this.generation;
     this.patch({ frozen: false });
     this.session.setPlatesLive(this.live);
-    if (this.state.status === 'ready') await this.vision.request<'ok'>({ type: 'unfreeze' });
-    this.invalidate();
+    try {
+      if (this.state.status === 'ready') await this.vision.request<'ok'>({ type: 'unfreeze' });
+    } catch (error) {
+      if (generation === this.generation) console.error('[plates] unfreeze failed', error);
+    }
+    if (generation === this.generation) this.invalidate();
   }
 
   /** "Nowa grupa": forget everything, including the worker and its WebAssembly memory. */
@@ -551,6 +573,7 @@ export class PlateSession {
     this.levelGraphs.clear();
     this.lastChange = null;
     this.dirty = true;
+    this.freezing = false;
     this.state = { ...initial(), orientation: this.state.orientation };
     this.startGraph = this.state.graph;
     this.listeners.forEach((listener) => listener());

@@ -8,6 +8,7 @@ import {
   Confirmer,
   CONFIRM_CONFIDENCE,
   CONFIRM_PASSES,
+  MAX_COLLECTED,
 } from '../src/features/plates/recognition/confirm';
 import type { VotedCharacter } from '../src/features/plates/recognition/recognize';
 
@@ -60,6 +61,15 @@ describe('confirming a reading', () => {
       { text: 'WE12345', count: 2, at: 3 },
       { text: 'KR1AC23', count: 1, at: 2 },
     ]);
+  });
+
+  it('keeps the collection short enough for the phone feed', () => {
+    let list = collect([], 'AA00000', 0);
+    for (let i = 1; i < 300; i++) list = collect(list, `AA${String(i).padStart(5, '0')}`, i);
+    expect(list).toHaveLength(MAX_COLLECTED);
+    expect(list[0].text).toBe('AA00299');
+    const feed = JSON.stringify({ type: 'plates', plates: list });
+    expect(parsePlateFeed(feed)?.plates).toHaveLength(MAX_COLLECTED);
   });
 
   it('formats a read plate with a space after the district letters', () => {

@@ -8,7 +8,6 @@ import { SessionManager } from '../services/SessionManager';
 import { pl } from '../i18n/pl';
 import { config } from '../config/settings';
 import { HandSymbol } from '../components/HandSymbol';
-import { GameView } from '../features/game/GameView';
 import { InstructorPanel } from '../features/instructor/InstructorPanel';
 import { plates } from '../i18n/plates';
 import { PartNav, type Part } from '../components/PartNav';
@@ -16,6 +15,9 @@ import { PartNav, type Part } from '../components/PartNav';
 const PlatesView = lazy(() =>
   import('../features/plates/PlatesView').then((m) => ({ default: m.PlatesView })),
 );
+// Phaser (~1.2 MB) loads only for the game; it is prefetched once a model is trained.
+const loadGame = () => import('../features/game/GameView');
+const GameView = lazy(() => loadGame().then((m) => ({ default: m.GameView })));
 const session = new SessionManager();
 export function App() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
@@ -70,6 +72,9 @@ export function App() {
   useEffect(() => {
     heading.current?.focus();
   }, [stage]);
+  useEffect(() => {
+    if (state.trained) void loadGame().catch(() => {});
+  }, [state.trained]);
   const isCapture = stage === 'OPEN' || stage === 'FIST';
   const showCamera =
     hub || isCapture || stage === 'TEST' || stage === 'GAME' || stage === 'EXPLAIN';
@@ -568,7 +573,9 @@ export function App() {
               </div>
             </div>
             <div className="game-container">
-              <GameView key={state.gameRound} controller={session.game} />
+              <Suspense fallback={<p className="plates-loading">{pl.gameLoading}</p>}>
+                <GameView key={state.gameRound} controller={session.game} />
+              </Suspense>
               {state.paused && (
                 <div className="pause-overlay">
                   <h2>{pl.paused}</h2>
