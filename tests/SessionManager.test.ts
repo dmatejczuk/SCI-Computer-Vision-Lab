@@ -1,8 +1,10 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import * as tf from '@tensorflow/tfjs';
+import { loadTf } from '../src/features/training/tf';
 import { SessionManager } from '../src/services/SessionManager';
 import { config, defaults } from '../src/config/settings';
 beforeAll(async () => {
+  await loadTf();
   await tf.setBackend('cpu');
   await tf.ready();
 });

@@ -30,7 +30,8 @@ const equal = (a: string, b: string) =>
 export class RoomRegistry {
   rooms = new Map<string, Room>();
   members = new Map<Connection, Member>();
-  private codeAttempts: number[] = [];
+  /** Failed manual code attempts in the last minute, across all clients (brute-force cap). */
+  private codeFailures: number[] = [];
   constructor(
     private now = Date.now,
     private turn = {
@@ -121,9 +122,8 @@ export class RoomRegistry {
     }
     if ((m.type === 'join' || m.type === 'join-code') && !member) {
       if (m.type === 'join-code') {
-        this.codeAttempts = this.codeAttempts.filter((t) => t > this.now() - 60000);
-        if (this.codeAttempts.length >= 120) throw new Error('RATE');
-        this.codeAttempts.push(this.now());
+        this.codeFailures = this.codeFailures.filter((t) => t > this.now() - 60000);
+        if (this.codeFailures.length >= 120) throw new Error('RATE');
       }
       const room =
         m.type === 'join'
@@ -137,8 +137,11 @@ export class RoomRegistry {
         (m.type === 'join' && !equal(room.invite, m.secret!)) ||
         room.detached.size > 0 ||
         room.pending.size >= 3
-      )
+      ) {
+        // Only wrong codes count: phones that pair correctly never use up the shared budget.
+        if (m.type === 'join-code') this.codeFailures.push(this.now());
         throw new Error('INVITATION');
+      }
       const attempt = token(),
         code = String(randomInt(100000, 1000000));
       room.pending.set(attempt, {

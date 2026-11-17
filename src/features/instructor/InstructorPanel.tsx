@@ -1,8 +1,16 @@
 import { SnapshotDiagnostics } from '../explanation/ExplanationView';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import { Modal } from '../../components/Modal';
 import { pl } from '../../i18n/pl';
 import type { SessionManager } from '../../services/SessionManager';
+import { plates } from '../../i18n/plates';
+// Loaded only when opened: keeps OpenCV.js out of the gesture workshop.
+const PerfTest = lazy(() =>
+  import('../plates/diagnostics/PerfTest').then((m) => ({ default: m.PerfTest })),
+);
+const PlatesInstructor = lazy(() =>
+  import('../plates/diagnostics/PlatesInstructor').then((m) => ({ default: m.PlatesInstructor })),
+);
 export function InstructorPanel({
   session,
   onClose,
@@ -13,6 +21,7 @@ export function InstructorPanel({
   const phone = useSyncExternalStore(session.phone.subscribe, session.phone.getSnapshot);
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const [confirm, setConfirm] = useState(false);
+  const [perf, setPerf] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [diagnostics, setDiagnostics] = useState(() => session.diagnostics());
   useEffect(() => {
@@ -43,6 +52,12 @@ export function InstructorPanel({
       >
         {pl.testGame}
       </button>
+      <button onClick={() => setPerf(true)}>{plates.perf.open}</button>
+      {state.mode === 'plates' && (
+        <Suspense fallback={null}>
+          <PlatesInstructor />
+        </Suspense>
+      )}
       <dl className="diagnostics">
         <dt>{text.camera}</dt>
         <dd>{state.cameraLabel ? text.connected : text.disconnected}</dd>
@@ -157,6 +172,13 @@ export function InstructorPanel({
           <summary>{text.diagnostic}</summary>
           <pre>{state.detail}</pre>
         </details>
+      )}
+      {perf && (
+        <Modal title={plates.perf.title} onClose={() => setPerf(false)}>
+          <Suspense fallback={<progress aria-label={plates.perf.loading} />}>
+            <PerfTest getVideo={() => session.activeVideo} />
+          </Suspense>
+        </Modal>
       )}
       {confirm && (
         <Modal title={text.confirm} onClose={() => setConfirm(false)}>

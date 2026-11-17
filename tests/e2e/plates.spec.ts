@@ -1,0 +1,160 @@
+import { test, expect, type Page } from '@playwright/test';
+
+async function openPlates(page: Page) {
+  await page.goto('/?role=station');
+  await page.getByRole('button', { name: 'Kamera komputera', exact: true }).click();
+  const plates = page.getByRole('button', { name: /Część 1\s*Czytnik tablic/ });
+  await expect(plates).toBeEnabled({ timeout: 60000 });
+  await plates.click();
+  await expect(page.getByRole('heading', { name: 'Czytnik tablic rejestracyjnych' })).toBeVisible();
+}
+
+test('part 1 shows the unmirrored camera, freezes a frame and keeps the stream', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openPlates(page);
+  const video = page.locator('.camera-dock video');
+  const track = await video.evaluate(
+    (v) => ((v as HTMLVideoElement).srcObject as MediaStream).getVideoTracks()[0].id,
+  );
+  // Level 2 uses the camera (level 1 has a built-in plate photo).
+  await page.getByRole('tab', { name: /Poziom 2/ }).click();
+  await expect(page.getByText(/\d+ kl\.\/s/)).toBeVisible({ timeout: 60000 });
+  // The preview canvas shows the frame as the operations get it: never mirrored.
+  const preview = page.getByRole('img', { name: 'Kamera (bez odbicia lustrzanego)' });
+  await expect
+    .poll(() => preview.evaluate((v) => getComputedStyle(v).transform))
+    .toMatch(/none|matrix\(1, 0, 0, 1, 0, 0\)/);
+  // The fake camera is landscape 640×480: the preview keeps 4:3 and turns with the buttons.
+  await expect.poll(() => preview.evaluate((c) => (c as HTMLCanvasElement).width)).toBe(640);
+  await page.getByRole('button', { name: 'Obróć w prawo' }).click();
+  await expect.poll(() => preview.evaluate((c) => (c as HTMLCanvasElement).height)).toBe(360);
+  await expect.poll(() => preview.evaluate((c) => (c as HTMLCanvasElement).width)).toBe(480);
+  await page.getByRole('button', { name: 'Obróć w lewo' }).click();
+  await expect.poll(() => preview.evaluate((c) => (c as HTMLCanvasElement).width)).toBe(640);
+  await page.getByRole('button', { name: 'Zatrzymaj klatkę' }).click();
+  await expect(page.getByText('Zatrzymana klatka')).toBeVisible();
+  await page.getByRole('button', { name: 'Wróć do obrazu na żywo' }).click();
+  // Switching parts keeps the same camera stream.
+  await page.getByRole('button', { name: 'Część 2: AI Challenge' }).click();
+  await expect(page.getByRole('heading', { name: 'Pokaż otwartą dłoń' })).toBeVisible({
+    timeout: 60000,
+  });
+  expect(
+    await page
+      .locator('video')
+      .evaluate((v) => ((v as HTMLVideoElement).srcObject as MediaStream).getVideoTracks()[0].id),
+  ).toBe(track);
+  await page.getByRole('button', { name: 'Część 1: Czytnik tablic' }).click();
+  await expect(page.getByRole('heading', { name: 'Czytnik tablic rejestracyjnych' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('node editor inserts blocks, explains wrong ones and undoes changes', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openPlates(page);
+  const output = page.locator('.block-card[data-block="output"]');
+  await expect(output.locator('.block-problem')).toContainText('czarno-biały');
+  // Dragging "Progowanie" onto the colour wire is refused with an explanation.
+  const wire = await page.locator('[data-testid^="rf__edge-"]').first().boundingBox();
+  const canvas = page.locator('.node-canvas');
+  const origin = (await canvas.boundingBox())!;
+  await page
+    .locator('.palette-item', { hasText: 'Progowanie' })
+    .first()
+    .dragTo(canvas, {
+      targetPosition: {
+        x: wire!.x + wire!.width / 2 - origin.x,
+        y: wire!.y + wire!.height / 2 - origin.y,
+      },
+    });
+  await expect(page.locator('.editor-bubble')).toContainText('Odcienie szarości');
+  for (const name of ['Odcienie szarości', 'Progowanie', 'Odwróć kolory'])
+    await page.locator('.palette-item', { hasText: name }).first().click();
+  await expect(page.locator('.block-card')).toHaveCount(5);
+  await expect(output.locator('.block-problem')).toHaveCount(0);
+  await expect(page.locator('.wire-problem')).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.block-card')).toHaveCount(4);
+  await page.keyboard.press('Control+y');
+  await expect(page.locator('.block-card')).toHaveCount(5);
+  // Unplug the invert block: it stays on the canvas, out of the chain; undo plugs it back.
+  await page.getByRole('button', { name: 'Odepnij blok: Odwróć kolory' }).click();
+  await expect(page.locator('.block-card')).toHaveCount(5);
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(3);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(4);
+  // A clicked wire offers scissors.
+  await page.locator('[data-testid^="rf__edge-"]').last().click();
+  await page.getByRole('button', { name: 'Przetnij linię' }).click();
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(3);
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(4);
+  // Delete the threshold block: the chain stays connected (now with a red wire).
+  await page.locator('.block-card[data-block="threshold"] .block-delete').click();
+  await expect(page.locator('.block-card')).toHaveCount(4);
+  await expect(page.locator('[data-testid^="rf__edge-"]')).toHaveCount(3);
+  // Large preview of a block.
+  await page.getByRole('button', { name: 'Powiększ (dwuklik): Odcienie szarości' }).click();
+  await expect(page.getByRole('dialog', { name: 'Podgląd: Odcienie szarości' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
+test('hub → plate reader → level 1 → launching the reader', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openPlates(page);
+  await expect(page.getByRole('tab', { name: /Poziom 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  // The reader is always reachable; it lights up once the plate is complete.
+  const launch = page.getByRole('button', { name: /Uruchom czytnik tablic/ });
+  await expect(launch).toBeEnabled();
+  await expect(launch).not.toHaveClass(/ready/);
+  await page.getByRole('button', { name: /Podpowiedź/ }).click();
+  await expect(page.locator('.level-hints li')).toHaveCount(1);
+  for (const name of ['Odcienie szarości', 'Progowanie', 'Odwróć kolory'])
+    await page.locator('.palette-item', { hasText: name }).first().click();
+  await expect(page.getByText('Znaleziono 7 / 7 znaków')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('Poziom zaliczony!')).toBeVisible();
+  await expect(launch).toHaveClass(/ready/);
+  await launch.click();
+  // The reading is drawn as a printed plate, with how sure the reader is of each character.
+  await expect(page.getByRole('img', { name: 'Odczytany tekst: KOT2026' })).toBeVisible();
+  await expect(page.getByText('✓ Odczytano tablicę')).toBeVisible();
+  await expect(page.locator('.reader-chars li')).toHaveCount(7);
+  await expect(page.locator('.reader-chars li').first()).toContainText('%');
+  await page.getByLabel('Moja tablica').fill('KOT2026');
+  await expect(page.getByText('Brawo!')).toBeVisible();
+  await page.getByRole('button', { name: '← Wróć do edytora' }).click();
+  await expect(page.locator('.block-card')).toHaveCount(5);
+  // New group clears the plate module: level, graph and typed plate.
+  await page.keyboard.press('Control+Shift+D');
+  await page.getByRole('button', { name: 'Nowa grupa', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Rozpocząć pracę z nową grupą?' });
+  await confirmation.getByRole('button', { name: 'Nowa grupa', exact: true }).click();
+  await openPlates(page);
+  await expect(page.locator('.block-card')).toHaveCount(2);
+  await expect(page.getByRole('tab', { name: /Poziom 1 ✓/ })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('facilitator panel shows plate diagnostics and loads the reference solution', async ({
+  page,
+}) => {
+  await openPlates(page);
+  await page.keyboard.press('Control+Shift+D');
+  const panel = page.getByRole('dialog', { name: 'Tryb prowadzącego' });
+  await expect(panel.getByRole('heading', { name: 'Czytnik tablic (część 1)' })).toBeVisible();
+  await expect(panel.getByTestId('plates-mats')).toHaveText(/^0 \/ \d+$/);
+  await panel.getByRole('button', { name: 'Wczytaj rozwiązanie poziomu 1' }).click();
+  await panel.getByRole('button', { name: 'Zamknij' }).click();
+  await expect(page.getByText('Znaleziono 7 / 7 znaków')).toBeVisible({ timeout: 30000 });
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('.block-card')).toHaveCount(2);
+});

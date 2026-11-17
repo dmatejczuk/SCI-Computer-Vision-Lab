@@ -10,8 +10,40 @@ export type ConnectionStats = {
   frames: number;
   lost: number;
 };
+/** Plates read on the computer, shown on the phone (computer → phone only). */
+export type PlateFeed = {
+  type: 'plates';
+  latest?: string;
+  plates: { text: string; count: number; at: number }[];
+};
+
+/** Parses a plate feed message defensively: only short plate texts and numbers pass. */
+export function parsePlateFeed(raw: unknown): PlateFeed | null {
+  if (typeof raw !== 'string' || raw.length > 20000) return null;
+  try {
+    const m = JSON.parse(raw) as PlateFeed;
+    const plate = (text: unknown) => typeof text === 'string' && /^[A-Z0-9 ]{1,12}$/.test(text);
+    if (m?.type !== 'plates' || !Array.isArray(m.plates) || m.plates.length > 200) return null;
+    if (m.latest !== undefined && !plate(m.latest)) return null;
+    if (
+      !m.plates.every(
+        (item) => plate(item?.text) && Number.isSafeInteger(item.count) && Number.isFinite(item.at),
+      )
+    )
+      return null;
+    return { type: 'plates', latest: m.latest, plates: m.plates };
+  } catch {
+    return null;
+  }
+}
+
 export class PeerConnectionController {
   readonly pc: RTCPeerConnection;
+  /**
+   * Small messages next to the video (plates read on the computer). Negotiated with a fixed
+   * id on both sides, so it is part of the first offer and needs no extra signaling.
+   */
+  readonly channel: RTCDataChannel;
   generation = 0;
   private queue: (RTCIceCandidateInit | null)[] = [];
   private chain = Promise.resolve();
@@ -33,6 +65,7 @@ export class PeerConnectionController {
       iceServers: config.iceServers ?? [],
       iceTransportPolicy: config.policy ?? 'all',
     });
+    this.channel = this.pc.createDataChannel('plates', { negotiated: true, id: 0 });
     this.pc.ontrack = (e) => {
       if (!this.stopped) onStream(e.streams[0] ?? new MediaStream([e.track]));
     };
@@ -182,6 +215,8 @@ export class PeerConnectionController {
     this.pc.ontrack = null;
     this.pc.onicecandidate = null;
     this.pc.onconnectionstatechange = null;
+    this.channel.onopen = null;
+    this.channel.onmessage = null;
     this.pc.close();
   }
 }

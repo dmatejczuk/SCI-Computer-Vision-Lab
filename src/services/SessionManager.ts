@@ -13,7 +13,7 @@ import {
   type ExplanationState,
   type ExplanationStep,
 } from '../features/explanation/types';
-import * as tf from '@tensorflow/tfjs';
+import { loadedTf } from '../features/training/tf';
 import { config, defaults, type GestureSettings } from '../config/settings';
 import { CameraService } from '../features/camera/CameraService';
 import { DatasetManager } from '../features/dataset/DatasetManager';
@@ -38,6 +38,8 @@ type ErrorKind =
   | 'explanation';
 interface Snapshot {
   source: 'local' | 'phone';
+  /** Which workshop part is on screen: gestures (AI Challenge) or the plate reader. */
+  mode: 'gestures' | 'plates';
   explanation: ExplanationState;
   modelRevision: number;
   stage: Stage;
@@ -62,6 +64,7 @@ interface Snapshot {
 }
 const initial = (): Snapshot => ({
   source: 'local',
+  mode: 'gestures',
   explanation: emptyExplanation(),
   modelRevision: 0,
   stage: 'START',
@@ -101,13 +104,16 @@ export class SessionManager {
     () => this.sourceLost(),
     () => {
       if (this.snapshot.source === 'phone' && this.snapshot.error === 'lost') {
-        if (this.video) this.frames.start(this.video);
+        const video = this.activeVideo;
+        if (video) this.frames.start(video);
       }
     },
   );
   frames = new FrameMonitor(
     () => {
-      if (
+      if (this.snapshot.mode === 'plates') {
+        if (this.platesLive) this.sourceLost();
+      } else if (
         ['OPEN', 'FIST', 'TEST', 'GAME'].includes(this.snapshot.stage) ||
         (this.snapshot.stage === 'EXPLAIN' && !this.snapshot.explanation.snapshot)
       )
@@ -121,6 +127,7 @@ export class SessionManager {
       return;
     this.patch({ error: null, cameraLabel: this.phone.label });
     this.phone.markRecovered();
+    if (this.snapshot.mode === 'plates') return;
     const signal = this.abort.signal;
     void this.predictor.idle().then(() => {
       if (signal.aborted || this.snapshot.error || this.snapshot.source !== 'phone') return;
@@ -210,6 +217,60 @@ export class SessionManager {
   attachVideo(video: HTMLVideoElement) {
     this.video = video;
   }
+  /** The video element currently showing the source (the plate module has its own). */
+  get activeVideo(): HTMLVideoElement | null {
+    return this.platesVideo ?? this.video;
+  }
+  private platesVideo: HTMLVideoElement | null = null;
+  /** True while the plate module needs live camera frames (not a built-in sample image). */
+  private platesLive = false;
+  private resetHandlers = new Set<() => void>();
+  /** Lets a lazily loaded module (the plate reader) clear its state on "Nowa grupa". */
+  onReset(handler: () => void) {
+    this.resetHandlers.add(handler);
+    return () => {
+      this.resetHandlers.delete(handler);
+    };
+  }
+  /**
+   * Shows the plate reader. Its own, unmirrored video element takes over frame monitoring;
+   * gesture prediction and the game pause meanwhile. The source and paired phone are kept.
+   */
+  enterPlates(video: HTMLVideoElement) {
+    this.predictor.stop();
+    this.gestures.reset();
+    if (this.snapshot.stage === 'GAME') this.pause();
+    this.platesVideo = video;
+    const stream = this.source.stream;
+    if (video.srcObject !== stream) video.srcObject = stream;
+    if (stream) {
+      void video.play().catch(() => {});
+      this.frames.start(video);
+    }
+    this.patch({ mode: 'plates', armed: false });
+  }
+  setPlatesLive(live: boolean) {
+    this.platesLive = live;
+  }
+  /** Returns to the gesture part; the main video element monitors frames again. */
+  leavePlates() {
+    const plates = this.platesVideo;
+    this.platesVideo = null;
+    this.platesLive = false;
+    if (plates) plates.srcObject = null;
+    if (this.snapshot.mode !== 'plates') return;
+    const stream = this.source.stream;
+    if (this.video && stream) {
+      if (this.video.srcObject !== stream) this.video.srcObject = stream;
+      void this.video.play().catch(() => {});
+      this.frames.start(this.video);
+    }
+    this.patch({ mode: 'gestures' });
+    if (this.snapshot.error || !stream) return;
+    if (this.snapshot.stage === 'TEST') this.beginPrediction();
+    else if (this.snapshot.stage === 'EXPLAIN' && !this.snapshot.explanation.snapshot)
+      this.beginPrediction(true);
+  }
   private run(action: (signal: AbortSignal) => Promise<void>, kind: ErrorKind) {
     if (this.snapshot.busy || this.snapshot.resetting) return Promise.resolve();
     const signal = this.abort.signal;
@@ -256,15 +317,16 @@ export class SessionManager {
     this.retryAction = () => this.start();
     this.patch({ stage: 'LOADING' });
     return this.run(async (signal) => {
-      if (!this.video) throw new Error('Video not attached');
+      const video = this.activeVideo;
+      if (!video) throw new Error('Video not attached');
       try {
-        await abortable(this.source.start(this.video), signal);
+        await abortable(this.source.start(video), signal);
       } catch (error) {
         if (!signal.aborted) this.fail('camera', error);
         return;
       }
       if (signal.aborted) return;
-      this.frames.start(this.video!);
+      this.frames.start(video);
       this.patch({ cameraLabel: this.source.label });
       await this.extractor.load(signal);
       if (!signal.aborted) this.patch({ stage: 'OPEN' });
@@ -447,10 +509,12 @@ export class SessionManager {
     this.predictor.stop();
     if (this.snapshot.stage === 'GAME') this.pause();
     return this.run(async (signal) => {
-      await abortable(this.source.start(this.video!, deviceId), signal);
+      const video = this.activeVideo!;
+      await abortable(this.source.start(video, deviceId), signal);
       if (signal.aborted) return;
-      this.frames.start(this.video!);
+      this.frames.start(video);
       this.patch({ cameraLabel: this.source.label });
+      if (this.snapshot.mode === 'plates') return;
       if (
         this.snapshot.stage === 'TEST' ||
         (this.snapshot.stage === 'GAME' && this.snapshot.controlMode === 'GESTURE')
@@ -486,6 +550,10 @@ export class SessionManager {
     this.game.reset();
     this.patch({ resetting: true, stage: 'START' });
     await Promise.all([this.operation, this.predictor.idle()]);
+    this.resetHandlers.forEach((handler) => handler());
+    if (this.platesVideo) this.platesVideo.srcObject = null;
+    this.platesVideo = null;
+    this.platesLive = false;
     this.dataset.clear();
     this.trainer.dispose();
     this.extractor.dispose();
@@ -683,9 +751,11 @@ export class SessionManager {
     await this.train();
   }
   diagnostics() {
+    // TensorFlow.js is loaded with the model; before that there is nothing to report.
+    const tf = loadedTf();
     return {
-      memory: tf.memory(),
-      backend: tf.getBackend(),
+      memory: tf?.memory() ?? { numTensors: 0, numBytes: 0, numDataBuffers: 0, unreliable: false },
+      backend: tf?.getBackend(),
       controller: this.gestures.state,
       fps: this.game.fps,
     };

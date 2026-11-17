@@ -3,7 +3,12 @@ import { deviceName } from './deviceName';
 import { PairingCodeInput } from './PairingCodeInput';
 import { useEffect, useRef, useState } from 'react';
 import { SignalingClient } from './SignalingClient';
-import { PeerConnectionController } from './PeerConnectionController';
+import { MiniPlate } from '../../components/MiniPlate';
+import {
+  parsePlateFeed,
+  PeerConnectionController,
+  type PlateFeed,
+} from './PeerConnectionController';
 import {
   canTransform,
   enterFullscreen,
@@ -70,6 +75,15 @@ export function PhoneCameraPage() {
   const autoStarted = useRef(false);
   const resumeCamera = useRef(() => {});
   const [code, setCode] = useState('');
+  // Plates read on the computer from this phone's picture.
+  const [feed, setFeed] = useState<PlateFeed | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [plateList, setPlateList] = useState(false);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
   const facing = useRef<'environment' | 'user'>('environment');
   const invite = useRef<URLSearchParams | null>(null);
   const statsTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
@@ -175,6 +189,15 @@ export function PhoneCameraPage() {
         setApproved(true);
         setStatus('Komputer zaakceptował telefon. Uruchamiamy aparat…');
         peer.current = new PeerConnectionController('phone', client, m, () => {}, lost);
+        peer.current.channel.onmessage = (event) => {
+          const message = parsePlateFeed(event.data);
+          if (!message || generation !== epoch.current) return;
+          setFeed(message);
+          if (message.latest) {
+            setToast(message.latest);
+            navigator.vibrate?.(80);
+          }
+        };
         setResumeVersion((v) => v + 1);
       } else if (m.type === 'error') {
         lost();
@@ -412,6 +435,33 @@ export function PhoneCameraPage() {
             <span className="connection-dot" />
             Na żywo
           </p>
+          {toast && (
+            <div className="phone-plate-toast" role="status">
+              <span>✓ Odczytano tablicę</span>
+              <MiniPlate text={toast} />
+            </div>
+          )}
+          {!!feed?.plates.length && (
+            <button
+              className="phone-plates-badge"
+              aria-expanded={plateList}
+              onClick={() => setPlateList((open) => !open)}
+            >
+              Odczytane: {feed.plates.length}
+            </button>
+          )}
+          {plateList && !!feed?.plates.length && (
+            <div className="phone-plates-list" role="dialog" aria-label="Odczytane tablice">
+              <ol>
+                {feed.plates.map((plate) => (
+                  <li key={plate.text}>
+                    <MiniPlate text={plate.text} />
+                    {plate.count > 1 && <span>×{plate.count}</span>}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
           {playback && (
             <button className="phone-play" onClick={() => void play()}>
               Odtwórz podgląd

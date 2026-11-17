@@ -1,9 +1,11 @@
-import * as tf from '@tensorflow/tfjs';
+import type * as TF from '@tensorflow/tfjs';
+import { tfjs } from './tf';
 import { config } from '../../config/settings';
 import type { DatasetManager } from '../dataset/DatasetManager';
 export class ModelTrainer {
-  model: tf.Sequential | null = null;
+  model: TF.Sequential | null = null;
   async train(dataset: DatasetManager, signal: AbortSignal, progress: (value: number) => void) {
+    const tf = tfjs();
     const data = dataset.balanced();
     const inputs = tf.tensor2d(data.values);
     const targets = tf.tidy(() => tf.oneHot(tf.tensor1d(data.labels, 'int32'), 2));
@@ -48,8 +50,9 @@ export class ModelTrainer {
   }
   async predict(embedding: Float32Array) {
     if (!this.model) throw new Error('Classifier not trained');
+    const tf = tfjs();
     const output = tf.tidy(
-      () => this.model!.predict(tf.tensor2d(embedding, [1, config.embeddingSize])) as tf.Tensor,
+      () => this.model!.predict(tf.tensor2d(embedding, [1, config.embeddingSize])) as TF.Tensor,
     );
     try {
       const values = await output.data();

@@ -1,3 +1,39 @@
+# Plate reader (part 1) - 2026-11-12
+
+New workshop part on branch `feature/plate-reader`: part selection after the camera hub, the
+node editor with OpenCV.js in a Web Worker, character recognition by template matching, the
+reader screen, three levels with hints, facilitator diagnostics and "Pokaż kod". See
+[PLATES.md](PLATES.md).
+
+- `npm run check`: TypeScript, ESLint, 101 unit tests in 19 files (41 new plate reader tests:
+  graph engine, OpenCV operations and `cv.Mat` release, recognition on generated plate photos,
+  levels, session) and the production build passed.
+- Playwright, full suite: 25/25 passed, including the 19 existing scenarios (gestures, game,
+  laboratory, phone WebRTC) and 6 new ones: performance page, unmirrored camera and frame
+  freezing, editor (insert, refused connection bubble, undo/redo, delete, preview), hub → part 1
+  → level 1 → reader → New group, facilitator panel, and a camera reading a generated plate video
+  (`--use-file-for-fake-video-capture`).
+- CSP: `vite preview` serves the Caddy policy (`script-src 'self' 'wasm-unsafe-eval'`); OpenCV.js
+  loads and runs under it thanks to the build-time embind patch (no `'unsafe-eval'`).
+
+Indicative performance (Chromium headless, fake camera 640×480, production build; developer
+laptop with AMD Ryzen AI 9 HX 370, so school computers will be slower):
+
+| Measurement | 640 px | 320 px |
+| --- | --- | --- |
+| Phase-0 page: camera → worker → 8 operations + 8 thumbnails, fps | 64 | 97 |
+| Frame time mean / p95 | 15.6 / 19.4 ms | 10.3 / 14.1 ms |
+| Unreleased `cv.Mat` | 0 | 0 |
+
+OpenCV.js loads in about 0.5 s from the local server (10.3 MB, 3.5 MB with gzip). Level 3
+reference graph (8 processing blocks, live camera): 13–14 passes/s at the 15 Hz cap, 8–9 ms per
+pass, reading 7/7 characters; over 2 minutes `cv.Mat` stayed 0 and OpenCV memory stayed at
+128 MB. The largest main-thread gap during the benchmark was 230–280 ms (headless browser,
+includes start-up); check editor smoothness on the real computers.
+
+Not yet verified: the room computers (phase-0 measurement on site), the real tile font and 3D
+tiles in room light (≥ 95 % target), a 10-minute soak on site, and level 1 with 2–3 students.
+
 # Phone viewfinder controls and disconnection screen - 2026-11-11
 
 While streaming, the phone page shows a plain full-screen viewfinder instead of the step page with

@@ -12,7 +12,7 @@ Neither client nor server records images. P2P does not imply that traffic stays 
 docker compose up -d --build
 ```
 
-Open `http://localhost`, choose **Uruchom AI Challenge**, then **Kamera komputera**. No hosts entry or certificate is needed.
+Open `http://localhost`, choose **Uruchom stanowisko**, then **Kamera komputera**. No hosts entry or certificate is needed.
 The default also starts the internal signaling service, but phone pairing requires the network
 HTTPS origin. A localhost QR cannot reach the computer from a phone and is deliberately refused.
 
@@ -77,7 +77,7 @@ do not disable the firewall. The signaling port 3001 is never published by Compo
 
 ## Pair and use
 
-1. On the computer choose **Uruchom AI Challenge**, then **Telefon** in the camera hub. A QR and a large six-character invitation code appear.
+1. On the computer choose **Uruchom stanowisko**, then **Telefon** in the camera hub. A QR and a large six-character invitation code appear.
 2. On the phone scan the QR, or open the same HTTPS site, choose **Udostępnij kamerę** and enter the six-character code. The six boxes support paste, automatic advance and keyboard correction. Review the suggested device name and select **Dołącz do stanowiska**.
 3. Compare the six-digit code on both screens. Approve only the intended request on the computer.
 4. Once the computer approves it, the phone starts the camera by itself; allow camera permission.
@@ -151,7 +151,7 @@ resume also replaces a socket the server still considers open (half-open TCP aft
 change); old sockets cannot send after replacement. Reload requires a new room. Invitations expire after
 5 minutes, attempts after 30 seconds, sessions after 2 hours. Six-character codes use a 32-character
 alphabet without I/O/0/1, are unique among active rooms and permit only an approval request.
-Manual code attempts are globally limited to 120/minute, in addition to socket limits.
+Wrong manual codes are globally limited to 120/minute, in addition to socket limits; correct codes do not count.
 Approval atomically consumes both QR and manual invitations and rejects other pending candidates
 (at most three). Explicit leave deletes the room; unexpected close uses the bounded grace period.
 A sweep runs every second. Names suggested from user-agent strings are editable convenience labels,
@@ -163,9 +163,10 @@ Limits: 64 KiB messages, 48 KiB SDP, 4 KiB ICE messages, 160 messages per connec
 180 sockets and 240 upgrade attempts per minute across the single server. Unauthenticated sockets
 expire after 5 seconds; ping/pong detects dead sockets in up to 20 seconds. In addition, each client
 IP (taken from Caddy's `X-Forwarded-For`) may hold `CLIENT_SOCKET_LIMIT` sockets (default 10),
-open 30 sockets and try 10 manual codes per minute, so one device cannot exhaust the shared capacity.
-On a public server reached by a whole school behind one NAT, set `CLIENT_SOCKET_LIMIT=0` to disable
-the per-client limits; such a server still needs deployment-level abuse protection. There is no horizontal scaling or durable recovery.
+and open 30 sockets per minute, so one device cannot exhaust the shared capacity. Each client IP may
+also enter 10 wrong manual codes per minute; this limit stays on even with `CLIENT_SOCKET_LIMIT=0`,
+so one guesser cannot use up the global code budget. On a public server reached by a whole school
+behind one NAT, set `CLIENT_SOCKET_LIMIT=0` to disable the per-client socket limits; such a server still needs deployment-level abuse protection. There is no horizontal scaling or durable recovery.
 Neither application logging nor signaling logs message bodies or tokens.
 
 ## Public-domain deployment

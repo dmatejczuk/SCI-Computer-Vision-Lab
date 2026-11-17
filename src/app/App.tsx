@@ -3,30 +3,43 @@ import { CameraLost } from '../components/CameraLost';
 import { AppHeader } from '../components/layout/AppHeader';
 import { AppFooter } from '../components/layout/AppFooter';
 import { ExplanationView } from '../features/explanation/ExplanationView';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { SessionManager } from '../services/SessionManager';
 import { pl } from '../i18n/pl';
 import { config } from '../config/settings';
 import { HandSymbol } from '../components/HandSymbol';
-import { GameView } from '../features/game/GameView';
 import { InstructorPanel } from '../features/instructor/InstructorPanel';
+import { plates } from '../i18n/plates';
+import { PartNav, type Part } from '../components/PartNav';
+// Part 1 (plate reader) is a separate chunk with OpenCV.js; it does not load TFJS or Phaser.
+const PlatesView = lazy(() =>
+  import('../features/plates/PlatesView').then((m) => ({ default: m.PlatesView })),
+);
+// Phaser (~1.2 MB) loads only for the game; it is prefetched once a model is trained.
+const loadGame = () => import('../features/game/GameView');
+const GameView = lazy(() => loadGame().then((m) => ({ default: m.GameView })));
 const session = new SessionManager();
 export function App() {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const video = useRef<HTMLVideoElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [instructor, setInstructor] = useState(false);
-  const [entered, setEntered] = useState(false);
-  const hub = !entered && state.controlMode !== 'KEYBOARD';
+  const [part, setPart] = useState<Part | null>(null);
+  const hub = part === null && state.controlMode !== 'KEYBOARD';
+  const platesOpen = part === 'plates' && state.controlMode !== 'KEYBOARD';
+  // Part 1 uses the whole screen with its own slim top bar.
+  const fullscreen = platesOpen;
   const choosing = state.stage === 'START' && !state.busy && !state.error;
   const phone = useSyncExternalStore(session.phone.subscribe, session.phone.getSnapshot);
   // A paired phone needs no source controls in the workshop; recovery uses the error retry.
   const phonePaired = state.source === 'phone' && !!phone.stats;
   useEffect(() => {
-    if (state.stage === 'START') setEntered(false);
+    if (state.stage === 'START') setPart(null);
   }, [state.stage]);
+  // Both parts need a camera: without one we go back to setup.
+  const changePart = (next: Part) => setPart(state.cameraLabel ? next : null);
   const chooseCamera = async (source: 'local' | 'phone') => {
-    setEntered(false);
+    setPart(null);
     await session.selectSource(source);
     void session.start();
   };
@@ -59,6 +72,9 @@ export function App() {
   useEffect(() => {
     heading.current?.focus();
   }, [stage]);
+  useEffect(() => {
+    if (state.trained) void loadGame().catch(() => {});
+  }, [state.trained]);
   const isCapture = stage === 'OPEN' || stage === 'FIST';
   const showCamera =
     hub || isCapture || stage === 'TEST' || stage === 'GAME' || stage === 'EXPLAIN';
@@ -117,8 +133,8 @@ export function App() {
     </div>
   );
   return (
-    <div className="app-shell">
-      <AppHeader>
+    <div className={`app-shell ${fullscreen ? 'fullscreen-part' : ''}`}>
+      <AppHeader hidden={fullscreen}>
         {hub && (
           <a className="role-back" href="/">
             Zmień rolę urządzenia
@@ -146,7 +162,8 @@ export function App() {
           </button>
         </div>
       </AppHeader>
-      <nav hidden={hub} aria-label={pl.workshop}>
+      {!hub && !fullscreen && <PartNav current="gestures" onChange={changePart} />}
+      <nav hidden={hub || fullscreen} aria-label={pl.workshop}>
         <ol className="steps">
           {pl.steps.map((label, index) => (
             <li
@@ -161,6 +178,11 @@ export function App() {
         </ol>
       </nav>
       {!hub && state.source === 'phone' && !phonePaired && <PairingPanel session={session} />}
+      {platesOpen && (
+        <Suspense fallback={<p className="plates-loading">{plates.loadingModule}</p>}>
+          <PlatesView session={session} onPart={changePart} />
+        </Suspense>
+      )}
       {state.error === 'lost' && (
         <CameraLost
           session={session}
@@ -170,6 +192,7 @@ export function App() {
         />
       )}
       <main
+        hidden={fullscreen}
         className={`${hub ? 'camera-hub' : ''} ${stage === 'GAME' ? 'playing' : ''} ${stage === 'START' ? 'welcome' : ''} ${stage === 'EXPLAIN' ? 'explaining' : ''}`}
       >
         <section
@@ -281,7 +304,7 @@ export function App() {
                 : 'Sprawdź swój podgląd'}
           </h1>
           <p className="lead" hidden={!choosing}>
-            Pokaż dłoń, naucz AI i zagraj. Zacznij od połączenia kamery.
+            Zacznij od połączenia kamery.
           </p>
           <div
             hidden={!choosing}
@@ -337,13 +360,30 @@ export function App() {
                   ? 'Zezwól przeglądarce na dostęp do kamery.'
                   : 'Połącz kamerę, aby przejść dalej.'}
             </p>
-            <button
-              className="primary"
-              disabled={busy || !!state.error || !state.cameraLabel || stage !== 'OPEN'}
-              onClick={() => setEntered(true)}
-            >
-              Przejdź do AI Challenge <span>→</span>
-            </button>
+            <div className="hub-parts" role="group" aria-label={plates.parts.label}>
+              <button
+                className="primary hub-part"
+                disabled={state.resetting || !!state.error || !state.cameraLabel}
+                onClick={() => setPart('plates')}
+              >
+                <strong>
+                  <small>{plates.parts.first}</small>
+                  {plates.parts.platesTitle}
+                </strong>
+                <span>→</span>
+              </button>
+              <button
+                className="secondary hub-part"
+                disabled={busy || !!state.error || !state.cameraLabel || stage !== 'OPEN'}
+                onClick={() => setPart('gestures')}
+              >
+                <strong>
+                  <small>{plates.parts.second}</small>
+                  Przejdź do AI Challenge
+                </strong>
+                <span>→</span>
+              </button>
+            </div>
           </div>
         </section>
         <section className="task-panel" hidden={hub || stage === 'EXPLAIN'}>
@@ -533,7 +573,9 @@ export function App() {
               </div>
             </div>
             <div className="game-container">
-              <GameView key={state.gameRound} controller={session.game} />
+              <Suspense fallback={<p className="plates-loading">{pl.gameLoading}</p>}>
+                <GameView key={state.gameRound} controller={session.game} />
+              </Suspense>
               {state.paused && (
                 <div className="pause-overlay">
                   <h2>{pl.paused}</h2>
@@ -559,7 +601,7 @@ export function App() {
           </section>
         )}
       </main>
-      <div className="app-bottom">
+      <div className="app-bottom" hidden={fullscreen}>
         <span>
           <i className="privacy-dot" />
           {pl.privacy}
