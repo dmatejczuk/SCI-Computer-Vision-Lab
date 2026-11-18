@@ -206,7 +206,7 @@ Build both images while Internet is available:
 
 ```sh
 docker compose build
-docker save ai-vision-challenge:1.0.0 aivision-signaling:latest -o ai-vision-challenge.tar
+docker save ai-vision-challenge:2.0.0 aivision-signaling:latest -o ai-vision-challenge.tar
 ```
 
 The signaling image name follows the Compose project name; use `docker compose images` to verify

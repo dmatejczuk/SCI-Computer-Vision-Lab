@@ -2,7 +2,7 @@
 services:
   app:
     build: .
-    image: ai-vision-challenge:1.0.0
+    image: ai-vision-challenge:2.0.0
     restart: unless-stopped
     depends_on:
       signaling:
