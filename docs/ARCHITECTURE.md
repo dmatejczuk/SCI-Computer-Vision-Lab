@@ -17,7 +17,7 @@ WAITING_FOR_OPEN -> two confident OPEN samples -> ARMED -> two confident FIST sa
 
 ## Game integration
 
-React owns the lifetime of a Phaser instance. A typed GameController bridges jump, score, FPS, pause and game-over events. Phaser owns movement, gravity, collision, obstacles and rendering. Stable OPEN is needed again on every new round. SPACE also emits a jump without changing the gesture controller. Collisions consume a round, never the dataset. Obstacle intervals allow the full jump arc; the opening seconds are clear.
+React owns the lifetime of a Phaser instance. A typed GameController bridges jump, score, FPS, pause and game-over events. Phaser owns movement, gravity, collision, obstacles and rendering. Stable OPEN is needed again on every new round. SPACE also emits a jump without changing the gesture controller. Collisions consume a round, never the dataset. Obstacle intervals allow the full jump arc; the opening seconds are clear. The running speed grows steadily during a round (`config.game.acceleration`, capped at `maxSpeed`, see `game/speed.ts`); a TEMPO label shows the factor relative to the start.
 
 ## Plate reader (part 1)
 

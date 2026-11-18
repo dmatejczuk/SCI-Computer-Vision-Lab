@@ -21,7 +21,9 @@ export const config = {
     gravity: 1500,
     jumpVelocity: -610,
     initialSpeed: 270,
-    maxSpeed: 440,
+    /** Speed gained every second of play (px/s per s); maxSpeed is reached after ~55 s. */
+    acceleration: 6,
+    maxSpeed: 600,
     firstObstacleMs: 3600,
   },
 };

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { config } from '../../config/settings';
 import { pl } from '../../i18n/pl';
 import type { GameController } from './GameController';
+import { gameSpeed, speedFactor } from './speed';
 export class RunnerScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Container;
   private obstacles: {
@@ -17,6 +18,8 @@ export class RunnerScene extends Phaser.Scene {
   private running = true;
   private road!: Phaser.GameObjects.TileSprite;
   private body!: Phaser.GameObjects.Rectangle;
+  private tempo!: Phaser.GameObjects.Text;
+  private shownFactor = 0;
   constructor(private controller: GameController) {
     super('runner');
   }
@@ -37,6 +40,15 @@ export class RunnerScene extends Phaser.Scene {
       fontSize: '16px',
       color: theme.getPropertyValue('--color-primary').trim(),
     });
+    // The game speeds up as the round goes on; the tempo shows how much faster it is.
+    this.tempo = this.add
+      .text(32, 50, '', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: theme.getPropertyValue('--color-primary').trim(),
+      })
+      .setName('tempo');
+    this.showTempo(gameSpeed(0));
     this.add
       .text(928, 28, pl.startSequence, {
         fontFamily: 'sans-serif',
@@ -79,12 +91,21 @@ export class RunnerScene extends Phaser.Scene {
       this.controller.setPaused = () => {};
     });
   }
+  /** Updates the tempo label only when the shown value changes (every 0.1×). */
+  private showTempo(speed: number) {
+    const factor = speedFactor(speed);
+    if (factor === this.shownFactor) return;
+    this.shownFactor = factor;
+    this.tempo.setText(`${pl.gameTempo} ×${factor.toFixed(1)}`);
+    this.controller.tempo = factor;
+  }
   update(_time: number, delta: number) {
     this.controller.fps = this.game.loop.actualFps;
     if (!this.running || this.ended) return;
     const dt = Math.min(delta, 40) / 1000;
     this.elapsed += dt * 1000;
-    const speed = Math.min(config.game.maxSpeed, config.game.initialSpeed + this.elapsed / 1400);
+    const speed = gameSpeed(this.elapsed);
+    this.showTempo(speed);
     this.road.tilePositionX += speed * dt;
     this.velocity += config.game.gravity * dt;
     this.player.y = Math.min(config.game.ground, this.player.y + this.velocity * dt);
