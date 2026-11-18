@@ -10,12 +10,13 @@ services:
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile.network', '--adapter', 'caddyfile']
     ports:
       - '80:80'
-      - '443:443'
-      - '443:443/udp'
+      - '${HTTPS_PORT:-443}:${HTTPS_PORT:-443}'
+      - '${HTTPS_PORT:-443}:${HTTPS_PORT:-443}/udp'
     environment:
       APP_HOST: ${APP_HOST:?Set APP_HOST to the HTTPS hostname (without scheme or port)}
       APP_TLS_ISSUER: ${APP_TLS_ISSUER:-internal}
-      SIGNALING_ORIGIN: wss://${APP_HOST:?Set APP_HOST}
+      HTTPS_PORT: ${HTTPS_PORT:-443}
+      SIGNALING_ORIGIN: wss://${APP_HOST:?Set APP_HOST}:${HTTPS_PORT:-443}
     volumes:
       - caddy_data:/data
       - caddy_config:/config
@@ -25,7 +26,7 @@ services:
       dockerfile: Dockerfile.signaling
     restart: unless-stopped
     environment:
-      APP_ORIGIN: https://${APP_HOST:?Set APP_HOST}
+      APP_ORIGIN: https://${APP_HOST:?Set APP_HOST}:${HTTPS_PORT:-443}
       TURN_URLS: ${TURN_URLS:-}
       TURN_SECRET: ${TURN_SECRET:-}
       ICE_RELAY_ONLY: ${ICE_RELAY_ONLY:-false}

@@ -139,6 +139,10 @@ inbound TCP ports 80 and 443 to Caddy, allow them in firewalls, and allow outbou
 certificate issuance/renewal. UDP 443 is optional for HTTP/3. No other service may occupy those
 ports. Do not use an example/test domain for a real public certificate.
 
+To serve the site on another port (for example when 443 is used by something else), set
+`HTTPS_PORT=3000`. The site is then `https://APP_HOST:3000`; TCP 80 must still reach Caddy for
+the ACME HTTP-01 challenge, and the chosen TCP (and optionally UDP) port must be allowed inbound.
+
 ```sh
 docker compose -f docker-compose.network.yml config
 docker compose -f docker-compose.network.yml up -d --build

@@ -62,6 +62,52 @@ the printed HTTPS URL on the computer. Select **Telefon**, scan the QR, approve 
 and start the phone camera. See the [phone camera guide](docs/PHONE_CAMERA.md) for Android/iOS
 trust, public-domain deployment, optional TURN and troubleshooting.
 
+## Public server: open these ports
+
+On a server reached over the internet (for example a school using its own network while the app
+runs elsewhere), pairing goes through HTTPS, but the phone video is sent over WebRTC. Restrictive
+networks, NAT and mobile data usually block a direct connection, so run the TURN relay
+(`docker-compose.turn.yml`) next to the app and allow these inbound ports:
+
+| Port        | Protocol  | Used for                                                  |
+| ----------- | --------- | --------------------------------------------------------- |
+| 80          | TCP       | Certificate issuance/renewal (ACME) and redirect to HTTPS |
+| 443         | TCP       | The application and signaling (UDP 443 optional, HTTP/3)  |
+| 3478        | TCP + UDP | TURN relay: STUN/TURN requests                            |
+| 49160–49219 | UDP       | TURN relay: media ports                                   |
+
+Open them in every firewall between the clients and the server: the provider's network firewall
+or security group (one inbound "allow" rule per row, source "any") and the server's own firewall,
+for example with `ufw`:
+
+```sh
+sudo ufw allow 80/tcp
+sudo ufw allow 443
+sudo ufw allow 3478
+sudo ufw allow 49160:49219/udp
+```
+
+Then set `TURN_SECRET` (a long random value), `TURN_PUBLIC_IP` and
+`TURN_URLS=turn:<APP_HOST>:3478?transport=udp,turn:<APP_HOST>:3478?transport=tcp` in `.env`, start
+the relay with `docker compose -p vision-turn --env-file .env -f docker-compose.turn.yml up -d`,
+and restart the app so signaling hands out TURN credentials. Keep the secret out of version
+control.
+
+On a public server, add these settings to the same `.env`:
+
+```dotenv
+# A whole school usually reaches the server from one address: do not limit sockets per IP.
+CLIENT_SOCKET_LIMIT=0
+# Keep the relay from reaching private networks behind the server, and disable TCP relaying.
+TURN_EXTRA_ARGS=--no-tcp-relay --denied-peer-ip=10.0.0.0-10.255.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255 --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=100.64.0.0-100.127.255.255 --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+```
+
+Wrong manual pairing codes stay limited per address. Do not use `TURN_EXTRA_ARGS` blocking private
+networks for a LAN relay whose `TURN_PUBLIC_IP` is itself a private address.
+
+If a network allows nothing but TCP 443, plain TURN on 3478 cannot pass; such networks
+need TURN over TLS on 443 on a separate address (see the [phone camera guide](docs/PHONE_CAMERA.md)).
+
 ## Run locally without Docker
 
 For development or a quick local preview, install Node.js 24 and npm:
