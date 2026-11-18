@@ -23,6 +23,7 @@ export const pl = {
   startSequence: 'Otwórz → zaciśnij → skocz',
   loading: 'Przygotowujemy stanowisko…',
   gameLoading: 'Ładowanie gry…',
+  gameTempo: 'TEMPO',
   loadingHelp: 'Zezwól na użycie kamery. Model AI ładuje się z lokalnego serwera.',
   openTitle: 'Pokaż otwartą dłoń',
   fistTitle: 'Teraz zaciśnij pięść',
