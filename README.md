@@ -133,6 +133,8 @@ to the application server over the local network.
 
 ## Documentation
 
+- [Changelog](CHANGELOG.md)
+
 - [Additional network configuration, HTTPS, and offline deployment](docs/DEPLOYMENT.md)
 - [Workshop preparation and facilitation](docs/WORKSHOP.md)
 - [Plate reader (part 1)](docs/PLATES.md)
