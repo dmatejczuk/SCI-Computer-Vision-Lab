@@ -22,6 +22,9 @@ export function createSignaling(
   // 0 disables per-client limits, e.g. for a public server reached by a whole school behind one NAT.
   clientLimit = Number(process.env.CLIENT_SOCKET_LIMIT ?? 10),
 ) {
+  // Browsers omit a default port in Origin: https://host:443 must match https://host.
+  const allowedOrigin = new URL(origin).origin;
+  publicOrigin = new URL(publicOrigin).origin;
   const registry = new RoomRegistry();
   const server = createServer((req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -61,7 +64,7 @@ export function createSignaling(
     while (arrivals.length && arrivals[0] < now - 60000) arrivals.shift();
     if (
       req.url !== '/ws' ||
-      req.headers.origin !== origin ||
+      req.headers.origin !== allowedOrigin ||
       wss.clients.size >= 180 ||
       arrivals.length >= 240 ||
       (client !== null &&

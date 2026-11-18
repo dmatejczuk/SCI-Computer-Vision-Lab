@@ -91,7 +91,21 @@ Then set `TURN_SECRET` (a long random value), `TURN_PUBLIC_IP` and
 `TURN_URLS=turn:<APP_HOST>:3478?transport=udp,turn:<APP_HOST>:3478?transport=tcp` in `.env`, start
 the relay with `docker compose -p vision-turn --env-file .env -f docker-compose.turn.yml up -d`,
 and restart the app so signaling hands out TURN credentials. Keep the secret out of version
-control. If a network allows nothing but TCP 443, plain TURN on 3478 cannot pass; such networks
+control.
+
+On a public server, add these settings to the same `.env`:
+
+```dotenv
+# A whole school usually reaches the server from one address: do not limit sockets per IP.
+CLIENT_SOCKET_LIMIT=0
+# Keep the relay from reaching private networks behind the server, and disable TCP relaying.
+TURN_EXTRA_ARGS=--no-tcp-relay --denied-peer-ip=10.0.0.0-10.255.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255 --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=100.64.0.0-100.127.255.255 --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+```
+
+Wrong manual pairing codes stay limited per address. Do not use `TURN_EXTRA_ARGS` blocking private
+networks for a LAN relay whose `TURN_PUBLIC_IP` is itself a private address.
+
+If a network allows nothing but TCP 443, plain TURN on 3478 cannot pass; such networks
 need TURN over TLS on 443 on a separate address (see the [phone camera guide](docs/PHONE_CAMERA.md)).
 
 ## Run locally without Docker

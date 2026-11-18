@@ -424,3 +424,25 @@ it('limits wrong codes per client address even without a socket limit', async ()
     await app.close();
   }
 });
+it('matches an Origin without the default port and serves a normalized public origin', async () => {
+  const app = createSignaling('https://lab.example.test:443');
+  await new Promise<void>((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+  const port = (app.server.address() as { port: number }).port;
+  try {
+    const config = await fetch(`http://127.0.0.1:${port}/api/phone-config`).then((r) => r.json());
+    expect(config.publicOrigin).toBe('https://lab.example.test');
+    const open = (origin: string) =>
+      new Promise<boolean>((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin });
+        ws.once('open', () => {
+          ws.terminate();
+          resolve(true);
+        });
+        ws.once('error', () => resolve(false));
+      });
+    expect(await open('https://lab.example.test')).toBe(true);
+    expect(await open('https://lab.example.test:3000')).toBe(false);
+  } finally {
+    await app.close();
+  }
+});

@@ -6,7 +6,8 @@
 
 import /etc/caddy/Caddyfile.common
 
-https://{$APP_HOST} {
+# HTTPS_PORT (default 443) lets the app share a server; ACME still answers HTTP-01 on port 80.
+https://{$APP_HOST}:{$HTTPS_PORT:443} {
     tls {
         issuer {$APP_TLS_ISSUER:internal}
     }
